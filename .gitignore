@@ -1,0 +1,7 @@
+data/
+hydroshed/
+xlsx/
+
+*.docx
+*.pptx
+*.mxd
