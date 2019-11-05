@@ -1,7 +1,14 @@
+<<<<<<< HEAD
 data/
 hydroshed/
 xlsx/
+r/
 
 *.docx
 *.pptx
 *.mxd
+=======
+/shp
+/raster
+/kmz
+>>>>>>> 229ecfb464c643a6179450dc6bb8f058e66c39d1
