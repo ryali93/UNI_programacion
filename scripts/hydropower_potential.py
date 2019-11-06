@@ -1,6 +1,7 @@
 import arcpy
 import os
-from create_points import create_points
+import pandas as pd
+from create_points_from_polyline import create_points
 
 arcpy.env.overwriteOutput = True
 arcpy.env.outputCoordinateSystem = arcpy.SpatialReference(32717)
@@ -9,6 +10,7 @@ arcpy.env.outputCoordinateSystem = arcpy.SpatialReference(32717)
 BASE_DIR = r'E:\2019\UNI'
 RASTER_DIR = os.path.join(BASE_DIR, "data", "raster")
 SHP_DIR = os.path.join(BASE_DIR, "data", "shp")
+XLS_DIR = os.path.join(BASE_DIR, "xlsx")
 
 # Files
 DEM = os.path.join(RASTER_DIR, "dem_area_17s.tif")
@@ -17,7 +19,7 @@ FLOW_DIR = os.path.join(RASTER_DIR, "fdir_area.tif")
 FLOW_ACC_MIN = os.path.join(RASTER_DIR, "facc_08.tif")
 RED_HIDRICA = os.path.join(SHP_DIR, "red_hidrica_test_1.shp")
 # POINTS_RED_HIDRICA = os.path.join(SHP_DIR, "points_red_hidrica_test_1.shp")
-# SPLIT_RED_HIDRICA = os.path.join(SHP_DIR, "split_red_hidrica_test_1.shp")
+SPLIT_RED_HIDRICA = os.path.join(SHP_DIR, "split_red_hidrica_test_1.shp")
 
 CURVAS = os.path.join(SHP_DIR, "gpl_curvas.shp")
 # PUNTOS_CURVA = os.path.join(SHP_DIR, "puntos_curva_test.shp")
@@ -26,13 +28,16 @@ CURVAS = os.path.join(SHP_DIR, "gpl_curvas.shp")
 
 # FIRST VERSION
 PUNTOS_FIRST = os.path.join(SHP_DIR, "gpt_first_v.shp")
+TABLA_FIRST = os.path.join(XLS_DIR, "tb_first.xls")
 
 # SECOND VERSION
 PUNTOS_SECOND = os.path.join(SHP_DIR, "gpt_second_v.shp")
 PUNTOS_SECOND_EVAL = os.path.join(SHP_DIR, "gpt_second_eval.shp")
-AREA_BUFFER = os.path.join(SHP_DIR, "gpo_buffer_2.shp")
-ISOCAUDAL = os.path.join(SHP_DIR, "gpl_isocaudal.shp")
-CURVAS_MULTIPART = os.path.join(SHP_DIR, "gpl_curvas_multipart.shp")
+INTERSECT = os.path.join(SHP_DIR, "gpt_puntos_intersect.shp")
+ISOCAUDAL = os.path.join(SHP_DIR, "gpl_isocaudales.shp")
+TABLA_SECOND = os.path.join(XLS_DIR, "tb_second.xls")
+# AREA_BUFFER = os.path.join(SHP_DIR, "gpo_buffer_2.shp")
+# CURVAS_MULTIPART = os.path.join(SHP_DIR, "gpl_curvas_multipart.shp")
 
 
 ID_EVAL = "ID_EVAL"
@@ -127,81 +132,85 @@ def first_version(river_split):
         river_split, 
         PUNTOS_FIRST, 
         "BOTH_ENDS")
+
+    LISTA_Q = [[os.path.join(RASTER_DIR, "facc_" + str(x).zfill(2)+".tif"), "Q_" + str(x).zfill(2)] for x in range(1, 13)]
+    print(LISTA_Q)
+
     extract_points = arcpy.sa.ExtractMultiValuesToPoints(
         PUNTOS_FIRST, 
-        [[DEM, "Z"], [FLOW_ACC_MIN, "Q"]], 
+        [[DEM, "Z_TOMA"], [DEM, "Z_RIO"]] + LISTA_Q, 
         "NONE")
 
-    dicc = {}
-    with arcpy.da.SearchCursor(PUNTOS_FIRST, [ID_EVAL, "Z", "Q"]) as cursor:
-        for x in cursor:
-            if x[0] not in dicc.keys():
-                dicc[x[0]] = {}
-                dicc[x[0]]["Z"] = []
-                dicc[x[0]]["Q"] = []
-            dicc[x[0]]["Z"].append(x[1])
-            dicc[x[0]]["Q"].append(x[2])
+    # dicc = {}
+    # with arcpy.da.SearchCursor(PUNTOS_FIRST, [ID_EVAL, "Z", "Q"]) as cursor:
+    #     for x in cursor:
+    #         if x[0] not in dicc.keys():
+    #             dicc[x[0]] = {}
+    #             dicc[x[0]]["Z"] = []
+    #             dicc[x[0]]["Q"] = []
+    #         dicc[x[0]]["Z"].append(x[1])
+    #         dicc[x[0]]["Q"].append(x[2])
 
-    with open("ttt.csv", "w") as f:
-        for d in dicc:
-            delta_z = max(dicc[d]["Z"]) - min(dicc[d]["Z"])
-            min_q = min(dicc[d]["Q"])
-            f.write("{},{},{}".format(d, delta_z, min_q))
-            f.write("\n")
-    f.close()
+    # with open("ttt.csv", "w") as f:
+    #     for d in dicc:
+    #         delta_z = max(dicc[d]["Z"]) - min(dicc[d]["Z"])
+    #         min_q = min(dicc[d]["Q"])
+    #         f.write("{},{},{}".format(d, delta_z, min_q))
+    #         f.write("\n")
+    # f.close()
+def first_version_table(layer, tabla):
+    df = table_to_data_frame(layer)
+    df = df.groupby("ID_EVAL").agg(
+        {
+             'Z_TOMA':max,
+             'Z_RIO': min,
+             'Q_01': lambda x: round(max(x), 2),
+             'Q_02': lambda x: round(max(x), 2),
+             'Q_03': lambda x: round(max(x), 2),
+             'Q_04': lambda x: round(max(x), 2),
+             'Q_05': lambda x: round(max(x), 2),
+             'Q_06': lambda x: round(max(x), 2),
+             'Q_07': lambda x: round(max(x), 2),
+             'Q_08': lambda x: round(max(x), 2),
+             'Q_09': lambda x: round(max(x), 2),
+             'Q_10': lambda x: round(max(x), 2),
+             'Q_11': lambda x: round(max(x), 2),
+             'Q_12': lambda x: round(max(x), 2),
+        }
+    )
+    df["Z_DELTA"] = df["Z_TOMA"] - df["Z_RIO"]
+    df["POT_01"] = df["Q_01"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_02"] = df["Q_02"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_03"] = df["Q_03"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_04"] = df["Q_04"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_05"] = df["Q_05"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_06"] = df["Q_06"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_07"] = df["Q_07"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_08"] = df["Q_08"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_09"] = df["Q_09"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_10"] = df["Q_10"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_11"] = df["Q_11"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_12"] = df["Q_12"] * df["Z_DELTA"] * 9810 / 1000000
+
+    df["POT_AN"] = df["POT_01"]+df["POT_02"]+df["POT_03"]+df["POT_04"]+df["POT_05"]+df["POT_06"]+df["POT_07"]+df["POT_08"]+df["POT_09"]+df["POT_10"]+df["POT_11"]+df["POT_12"]
+
+    df = df[df['Z_DELTA'].notnull()]
+    df.to_excel(tabla)
 
 
-def second_version_create_buffer(river):
-    pass
+def second_version(river, interseccion, isocaudal, output, buff):
+    salida = arcpy.CopyFeatures_management(interseccion, output)
+    arcpy.DeleteRows_management(salida)
 
-def second_version(river, output, buff):
-    arcpy.DeleteRows_management(output)
-    area_buffer = arcpy.Buffer_analysis(
-        river, 
-        AREA_BUFFER, 
-        '{} Meters'.format(buff), 'FULL', 'ROUND', 'ALL', '#', 'PLANAR')
+    mfl_curvas = arcpy.MakeFeatureLayer_management(isocaudal, "mfl_curvas")
 
-    interseccion = arcpy.Intersect_analysis(
-        [river, CURVAS], 
-        PUNTOS_SECOND, 
-        'ALL', '#', 'POINT')
-
-    arcpy.AddField_management(interseccion, ID_EVAL, "TEXT", "#", "#", 20)
-    n = 0
-    with arcpy.da.UpdateCursor(interseccion, [ID_EVAL]) as cursor:
-        for x in cursor:
-            n += 1
-            x[0] = "ID" + str(n).zfill(4)
-            cursor.updateRow(x)
-
-    isocaudal_clip = arcpy.Clip_analysis(
-        ISOCAUDAL, 
-        area_buffer, 
-        "in_memory\\isocaudal_clip", '#')
-
-    curvas_multipart = arcpy.MultipartToSinglepart_management(
-        isocaudal_clip, 
-        "in_memory\\curvas_multipart")
-
-    mfl_curvas = arcpy.MakeFeatureLayer_management(curvas_multipart, "mfl_curvas")
-    mfl_rios = arcpy.MakeFeatureLayer_management(river, "mfl_rios")
-
-    select_curvas = arcpy.SelectLayerByLocation_management(
-        mfl_curvas, 
-        'INTERSECT', 
-        mfl_rios, '#', 'NEW_SELECTION', 'NOT_INVERT')
-
-    copy_curvas = arcpy.CopyFeatures_management(select_curvas, CURVAS_MULTIPART)
-    arcpy.SelectLayerByAttribute_management(mfl_curvas, "CLEAR_SELECTION")
-
-    mfl_curvas = arcpy.MakeFeatureLayer_management(copy_curvas, "mfl_curvas")
-
-    list_ids = [x[0] for x in arcpy.da.SearchCursor(interseccion, [ID_EVAL])]
+    list_ids = list(set([x[0] for x in arcpy.da.SearchCursor(interseccion, [ID_EVAL])]))
     print(list_ids)
 
-    cursorM = arcpy.da.InsertCursor(output, ["SHAPE@XY", ID_EVAL, "Contour", "Q"])
+    lista_q = ["Q_" + str(x).zfill(2) for x in range(1, 13)]
+    cursorM = arcpy.da.InsertCursor(output, ["SHAPE@XY", ID_EVAL, "Z_TOMA"] + lista_q)
 
-    for ideval in list_ids[20:50]:
+    for ideval in list_ids:
         print(ideval)
         mfl_pt = arcpy.MakeFeatureLayer_management(interseccion, "point_mfl", "{} = '{}'".format(ID_EVAL, ideval))
         curvas_select = arcpy.SelectLayerByLocation_management(
@@ -211,24 +220,66 @@ def second_version(river, output, buff):
             mfl_curvas, 
             "in_memory\\points_vertex", 'BOTH_ENDS')
 
-        valor_q_z = [[x[0], x[1]] for x in arcpy.da.SearchCursor(curvas_select, ["grid_code", "Contour"])][0]
-
-        print(valor_q_z)
+        valor_z = [x[0] for x in arcpy.da.SearchCursor(curvas_select, ["Contour"])][0]
 
         # Feature Vertex
-        list_fv = [x[0] for x in arcpy.da.SearchCursor(feature_vertex, ["SHAPE@XY"])]
-
-        for m in list_fv:
-            #print(m)
-            cursorM.insertRow([m, ideval, valor_q_z[1], valor_q_z[0]])
-            #punto_curva = arcpy.Snap_edit(feature_vertex, "{} EDGE '70 Meters'".format(CURVAS))
-            #coord_rio = [x[0] for x in arcpy.da.SearchCursor(feature_vertex, ["SHAPE@XY"])][0]
-            #cursorM.insertRow([coord_rio, ideval])
+        t = 0
+        with arcpy.da.SearchCursor(feature_vertex, ["SHAPE@XY"] + lista_q) as cursor:
+            for m in cursor:
+                t += 1
+                qs = [m[q+1] for q in range(len(lista_q))]
+                cursorM.insertRow([m[0], ideval + "_{}".format(t), valor_z] + qs)
+                punto_curva = arcpy.Snap_edit(feature_vertex, "{} EDGE '1000 Meters'".format(river))
+                coord_rio = [x[0] for x in arcpy.da.SearchCursor(feature_vertex, ["SHAPE@XY"])][0]
+                cursorM.insertRow([coord_rio, ideval + "_{}".format(t), valor_z] + qs)
 
         arcpy.SelectLayerByAttribute_management(mfl_curvas, "CLEAR_SELECTION")
 
+    arcpy.gp.ExtractMultiValuesToPoints_sa(output, [[DEM, "Z_RIO"]])
+    arcpy.DeleteField_management(output, 'FID_red_hi;FID_gpl_cu;Contour;ORIG_FID')
+
     del cursor
     del cursorM
+    return output
+
+def second_version_table(layer, tabla):
+    df = table_to_data_frame(layer)
+    df = df.groupby("ID_EVAL").agg(
+        {
+             'Z_TOMA':max,
+             'Z_RIO': min,
+             'Q_01': lambda x: round(max(x), 2),
+             'Q_02': lambda x: round(max(x), 2),
+             'Q_03': lambda x: round(max(x), 2),
+             'Q_04': lambda x: round(max(x), 2),
+             'Q_05': lambda x: round(max(x), 2),
+             'Q_06': lambda x: round(max(x), 2),
+             'Q_07': lambda x: round(max(x), 2),
+             'Q_08': lambda x: round(max(x), 2),
+             'Q_09': lambda x: round(max(x), 2),
+             'Q_10': lambda x: round(max(x), 2),
+             'Q_11': lambda x: round(max(x), 2),
+             'Q_12': lambda x: round(max(x), 2),
+        }
+    )
+    df["Z_DELTA"] = df["Z_TOMA"] - df["Z_RIO"]
+    df["POT_01"] = df["Q_01"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_02"] = df["Q_02"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_03"] = df["Q_03"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_04"] = df["Q_04"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_05"] = df["Q_05"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_06"] = df["Q_06"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_07"] = df["Q_07"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_08"] = df["Q_08"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_09"] = df["Q_09"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_10"] = df["Q_10"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_11"] = df["Q_11"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_12"] = df["Q_12"] * df["Z_DELTA"] * 9810 / 1000000
+
+    df["POT_AN"] = df["POT_01"]+df["POT_02"]+df["POT_03"]+df["POT_04"]+df["POT_05"]+df["POT_06"]+df["POT_07"]+df["POT_08"]+df["POT_09"]+df["POT_10"]+df["POT_11"]+df["POT_12"]
+
+    df = df[df['Z_DELTA'].notnull()]
+    df.to_excel(tabla)
 
 def eval_area(area):
     arcpy.DeleteRows_management(PUNTOS_MAYOR)
@@ -292,19 +343,33 @@ def extract_from_raster(points):
     arcpy.gp.ExtractMultiValuesToPoints_sa(
         points, list_raster)
 
+def table_to_data_frame(in_table, input_fields=None, where_clause=None):
+    OIDFieldName = arcpy.Describe(in_table).OIDFieldName
+    if input_fields:
+        final_fields = [OIDFieldName] + input_fields
+    else:
+        final_fields = [field.name for field in arcpy.ListFields(in_table)]
+    data = [row for row in arcpy.da.SearchCursor(in_table, final_fields, where_clause=where_clause)]
+    fc_dataframe = pd.DataFrame(data, columns=final_fields)
+    fc_dataframe = fc_dataframe.set_index(OIDFieldName, drop=True)
+    return fc_dataframe
+
 def main():
     # flow_acc_month()
 
-    create_river(FLOW_ACC_MIN)
+    # create_river(FLOW_ACC_MIN)
     # create_interview_points(RED_HIDRICA, 5000, POINTS_RED_HIDRICA)
     # split_river(RED_HIDRICA, POINTS_RED_HIDRICA, SPLIT_RED_HIDRICA)
     # create_eval_areas(SPLIT_RED_HIDRICA, EVAL_AREA, 500)
     # eval_area(EVAL_AREA)
     # extract_from_raster(PUNTOS_MAYOR)
 
-    # first_version(SPLIT_RED_HIDRICA)
+    first_version(SPLIT_RED_HIDRICA)
+    first_version_table(PUNTOS_FIRST, TABLA_FIRST)
 
-    second_version(RED_HIDRICA, 1000)
+    # second = second_version(RED_HIDRICA, INTERSECT, ISOCAUDAL, PUNTOS_SECOND_EVAL, 1000)
+    # Antes, hacer Extract MultiValues to Point y arreglar el Z_RIO
+    # second_version_table(PUNTOS_SECOND_EVAL, TABLA_SECOND)
 
 
 if __name__ == '__main__':

@@ -21,11 +21,14 @@ CURVAS = os.path.join(SHP_DIR, "gpl_curvas.shp")
 # New files
 PUNTOS = os.path.join(SHP_DIR, "gpt_second_v.shp")
 INTERSECT = os.path.join(SHP_DIR, "gpt_puntos_intersect.shp")
+AREA_BUFFER = os.path.join(SHP_DIR, "gpo_buffer_rio.shp")
+ISOCAUDAL = os.path.join(SHP_DIR, "gpl_isocaudal.shp")
+
 
 ID_EVAL = "ID_EVAL"
 
-def create_points_intersect(river, curvas, buff):
-    area_buffer = arcpy.Buffer_analysis(river, "in_memory\\buffer", '{} Meters'.format(buff), 'FULL', 'ROUND', 'ALL', '#', 'PLANAR')
+def create_points_intersect(river, curvas, buffer_pol, buff):
+    area_buffer = arcpy.Buffer_analysis(river, buffer_pol, '{} Meters'.format(buff), 'FULL', 'ROUND', 'ALL', '#', 'PLANAR')
     interseccion = arcpy.Intersect_analysis([river, curvas], "in_memory\\interseccion", 'ALL', '#', 'POINT')
     arcpy.AddField_management(interseccion, ID_EVAL, "TEXT", "#", "#", 20)
     n = 0
@@ -37,49 +40,59 @@ def create_points_intersect(river, curvas, buff):
 
     fields = 'FID_red_hi;arcid;grid_code;from_node;to_node;FID_gpl_cu;OBJECTID;Id;Shape_Leng'
     arcpy.DeleteField_management(interseccion, fields)
-
     return area_buffer, interseccion
 
-# def add_q_fields(layer):
-#     lista_q_fields = [f[1] for f in LISTA_Q]
-#     name_fields = [x.name for x in arcpy.ListFields(layer)]
-#     for field in lista_q_fields:
-#         if field not in name_fields:
-#             arcpy.AddField_management(layer, field, "DOUBLE")
-
 def extract_q_values(interseccion):
-    # lista_q_fields = [f[1] for f in LISTA_Q]
-    # add_q_fields(interseccion)
-    # cursor = arcpy.da.InsertCursor(interseccion, [ID_EVAL, "SHAPE@XY", "DEM"] + lista_q_fields)
-    # puntos_multipart = arcpy.MultipartToSinglepart_management(interseccion, "in_memory\\puntos_multipart")
     puntos_multipart = arcpy.MultipartToSinglepart_management(interseccion, INTERSECT)
-
     list_raster = [[DEM, "Z_TOMA"]] + LISTA_Q
-    # print(os.path.join(SCRATCH, "gpt_points"))
-    print(list_raster)
     arcpy.gp.ExtractMultiValuesToPoints_sa(puntos_multipart, list_raster)
 
-    # list_ideval = [x[0] for x in arcpy.da.SearchCursor(puntos_multipart, [ID_EVAL])]
+def isocaudal_clip(river, curvas, buffer_pol, isocaudal, interseccion):
+    curvas_clip = arcpy.Clip_analysis(curvas, buffer_pol, "in_memory\\curvas_clip")
+    curvas_multipart = arcpy.MultipartToSinglepart_management(curvas_clip, "in_memory\\curvas_multipart")
 
-    # for ideval in list_ideval:
-    #     mfl = arcpy.MakeFeatureLayer_management(puntos_multipart, "punto_eval", "{} = '{}'".format(ID_EVAL, ideval))
-    #     points = arcpy.CopyFeatures_management(mfl, os.path.join(SCRATCH, "gpt_points"))
+    mfl_curvas = arcpy.MakeFeatureLayer_management(curvas_multipart, "mfl_curvas")
+    mfl_rios = arcpy.MakeFeatureLayer_management(river, "mfl_rios")
 
-    #     list_raster = [[DEM, "Z_TOMA"]] + LISTA_Q
-    #     print(os.path.join(SCRATCH, "gpt_points"))
-    #     print(list_raster)
+    select_curvas = arcpy.SelectLayerByLocation_management(mfl_curvas, 'INTERSECT', mfl_rios, '#', 'NEW_SELECTION', 'NOT_INVERT')
 
-    #     arcpy.gp.ExtractMultiValuesToPoints_sa(points, list_raster)
-    #     inters = [x for x in arcpy.da.SearchCursor(points, ["SHAPE@XY", "DEM"] + lista_q_fields)]
-    #     for i in inters:
-    #         cursor.insertRow([ideval] + [inters[m] for m in range(len(inters))])
-    #     print(ideval)
+    copy_curvas = arcpy.CopyFeatures_management(select_curvas, "in_memory\\select_curvas")
 
-    # del cursor
+    fms = arcpy.FieldMappings()
+    fms.addTable(interseccion)
+    fields_sequence = ['ID_EVAL','Z_TOMA','Q_01','Q_02','Q_03','Q_04','Q_05','Q_06','Q_07','Q_08','Q_09','Q_10','Q_11','Q_12']
+    # fields_sequence = ['FID_red_hi', 'FID_gpl_c', 'ORIG_FID']
+    # fields_to_delete = [f.name for f in fms.fields if f.name not in fields_sequence]
+    # for field in fields_to_delete:
+    #     fms.removeFieldMap(fms.findFieldMapIndex(field))
+    fms_out = arcpy.FieldMappings()
+    fms_out.addTable(copy_curvas)
+
+    print(fms)
+    print(fields_sequence)
+    print([x.name for x in arcpy.ListFields(copy_curvas)])
+
+    for field in fields_sequence:
+        mapping_index = fms.findFieldMapIndex(field)
+        field_map = fms.fieldMappings[mapping_index]
+        fms_out.addFieldMap(field_map)
+    arcpy.SpatialJoin_analysis(copy_curvas, interseccion, isocaudal, 
+        'JOIN_ONE_TO_ONE', 'KEEP_ALL', 
+        fms_out, 
+        'INTERSECT', '#', '#')
+
+    # arcpy.AddJoin_management(mfl_curvas, "ID_EVAL", mfl_rios, "ID_EVAL")
+    # arcpy.CopyFeatures_management(mfl_curvas, isocaudal)
+    arcpy.SelectLayerByAttribute_management(mfl_curvas, "CLEAR_SELECTION")
+
+    # ********************************************************
+    # Aqui falta terminar el spatial join
+    # ********************************************************
 
 def main():
-    area_buffer, interseccion = create_points_intersect(RED_HIDRICA, CURVAS, 1000)
+    area_buffer, interseccion = create_points_intersect(RED_HIDRICA, CURVAS, AREA_BUFFER, 1000)
     extract_q_values(interseccion)
+    isocaudal_clip(RED_HIDRICA, CURVAS, AREA_BUFFER, ISOCAUDAL, interseccion)
 
 if __name__ == '__main__':
     main()
