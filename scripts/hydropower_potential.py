@@ -12,7 +12,7 @@ RASTER_DIR = os.path.join(BASE_DIR, "data", "raster")
 SHP_DIR = os.path.join(BASE_DIR, "data", "shp")
 XLS_DIR = os.path.join(BASE_DIR, "xlsx")
 
-# Files
+# fields
 DEM = os.path.join(RASTER_DIR, "dem_area_17s.tif")
 SLOPE = os.path.join(RASTER_DIR, "slope_deg_17s.tif")
 FLOW_DIR = os.path.join(RASTER_DIR, "fdir_area.tif")
@@ -28,14 +28,14 @@ CURVAS = os.path.join(SHP_DIR, "gpl_curvas.shp")
 
 # FIRST VERSION
 PUNTOS_FIRST = os.path.join(SHP_DIR, "gpt_first_v.shp")
-TABLA_FIRST = os.path.join(XLS_DIR, "tb_first.xls")
+TABLA_FIRST = os.path.join(XLS_DIR, "tb_first_min.xls")
 
 # SECOND VERSION
 PUNTOS_SECOND = os.path.join(SHP_DIR, "gpt_second_v.shp")
 PUNTOS_SECOND_EVAL = os.path.join(SHP_DIR, "gpt_second_eval.shp")
 INTERSECT = os.path.join(SHP_DIR, "gpt_puntos_intersect.shp")
 ISOCAUDAL = os.path.join(SHP_DIR, "gpl_isocaudales.shp")
-TABLA_SECOND = os.path.join(XLS_DIR, "tb_second.xls")
+TABLA_SECOND = os.path.join(XLS_DIR, "tb_second_min.xls")
 # AREA_BUFFER = os.path.join(SHP_DIR, "gpo_buffer_2.shp")
 # CURVAS_MULTIPART = os.path.join(SHP_DIR, "gpl_curvas_multipart.shp")
 
@@ -44,12 +44,12 @@ ID_EVAL = "ID_EVAL"
 TIPO = "TIPO"
 
 def flow_acc_month():
-    for i in range(1,13):
+    for i in range(5,13):
         name = str(i).zfill(2)
         arcpy.gp.FlowAccumulation_sa(
             os.path.join(RASTER_DIR,"fdir_area.tif"), 
-            os.path.join(RASTER_DIR, "facc_{}.tif".format(name)), 
-            os.path.join(RASTER_DIR, "q_area_{}.tif".format(name)), 
+            os.path.join(RASTER_DIR, "facc_{}_min.tif".format(name)), 
+            os.path.join(RASTER_DIR, "q_area_{}_min.tif".format(name)), 
             'FLOAT')
         print(name)
 
@@ -133,7 +133,7 @@ def first_version(river_split):
         PUNTOS_FIRST, 
         "BOTH_ENDS")
 
-    LISTA_Q = [[os.path.join(RASTER_DIR, "facc_" + str(x).zfill(2)+".tif"), "Q_" + str(x).zfill(2)] for x in range(1, 13)]
+    LISTA_Q = [[os.path.join(RASTER_DIR, "facc_" + str(x).zfill(2)+"_min.tif"), "Q_" + str(x).zfill(2)] for x in range(1, 13)]
     print(LISTA_Q)
 
     extract_points = arcpy.sa.ExtractMultiValuesToPoints(

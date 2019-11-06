@@ -13,7 +13,7 @@ SCRATCH = arcpy.env.scratchGDB
 # Existing files
 DEM = os.path.join(RASTER_DIR, "dem_area_17s.tif")
 FLOW_ACC_MIN = os.path.join(RASTER_DIR, "facc_08.tif")
-LISTA_Q = [[os.path.join(RASTER_DIR, "facc_" + str(x).zfill(2)+".tif"), "Q_" + str(x).zfill(2)] for x in range(1, 13)]
+LISTA_Q = [[os.path.join(RASTER_DIR, "facc_" + str(x).zfill(2)+"_min.tif"), "Q_" + str(x).zfill(2)] for x in range(1, 13)]
 
 RED_HIDRICA = os.path.join(SHP_DIR, "red_hidrica_test_1.shp")
 CURVAS = os.path.join(SHP_DIR, "gpl_curvas.shp")
