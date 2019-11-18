@@ -1,4 +1,4 @@
-import arcpy
+from settings import *
 
 def create_points(polyline, choice='INTERVAL BY DISTANCE', start_from='BEGINNING', distance=1000, end_points='BOTH', output=''):
     '''
@@ -87,3 +87,14 @@ def create_points(polyline, choice='INTERVAL BY DISTANCE', start_from='BEGINNING
         arcpy.CopyFeatures_management(mem_point_fl, output)
         arcpy.Delete_management(mem_point)
         arcpy.Delete_management(mem_point_fl)
+
+def table_to_data_frame(in_table, input_fields=None, where_clause=None):
+    OIDFieldName = arcpy.Describe(in_table).OIDFieldName
+    if input_fields:
+        final_fields = [OIDFieldName] + input_fields
+    else:
+        final_fields = [field.name for field in arcpy.ListFields(in_table)]
+    data = [row for row in arcpy.da.SearchCursor(in_table, final_fields, where_clause=where_clause)]
+    fc_dataframe = pd.DataFrame(data, columns=final_fields)
+    fc_dataframe = fc_dataframe.set_index(OIDFieldName, drop=True)
+    return fc_dataframe

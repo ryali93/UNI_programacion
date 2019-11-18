@@ -3,10 +3,12 @@ data/
 hydroshed/
 xlsx/
 r/
+maps/
 
 *.docx
 *.pptx
 *.mxd
+*.pyc
 =======
 /shp
 /raster
