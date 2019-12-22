@@ -1,13 +1,15 @@
 from settings import *
 from s00_funciones import *
 
-# fields
-DEM = os.path.join(RASTER_DIR, "dem_area_17s.tif")
-SLOPE = os.path.join(RASTER_DIR, "slope_deg_17s.tif")
+# Existing files
+DEM = os.path.join(RASTER_DIR, "ra_dem.tif")
+# SLOPE = os.path.join(RASTER_DIR, "slope_deg_17s.tif")
 FLOW_ACC_MIN = os.path.join(RASTER_DIR, "facc_08.tif")  # Acumulacion de flujo para mes 8 (agosto)
+
+# New files
 RED_HIDRICA = os.path.join(SHP_DIR, "gpl_red_hidrica.shp") # output
-SPLIT_RED_HIDRICA = os.path.join(SHP_DIR, "gpl_red_hidrica_split.shp") # output
 POINTS_RED_HIDRICA = os.path.join(SHP_DIR, "gpt_red_hidrica_puntos.shp") # output
+SPLIT_RED_HIDRICA = os.path.join(SHP_DIR, "gpl_red_hidrica_split.shp") # output
 
 # OLD VERSION
 # CURVAS = os.path.join(SHP_DIR, "gpl_curvas.shp")
@@ -16,16 +18,16 @@ POINTS_RED_HIDRICA = os.path.join(SHP_DIR, "gpt_red_hidrica_puntos.shp") # outpu
 # EVAL_AREA = os.path.join(SHP_DIR, "gpo_area_eval.shp")
 
 # FIRST VERSION
-PUNTOS_FIRST = os.path.join(SHP_DIR, "gpt_first.shp")
-TABLA_FIRST = os.path.join(XLS_DIR, "tb_first.xls")
+PUNTOS_FIRST = os.path.join(SHP_DIR, "gpt_first_5000.shp")
+TABLA_FIRST = os.path.join(XLS_DIR, "tb_first_5000.xls")
 
 # SECOND VERSION
-PUNTOS_SECOND = os.path.join(SHP_DIR, "gpt_second.shp")
-INTERSECT = os.path.join(SHP_DIR, "gpt_puntos_intersect.shp")
-ISOCAUDAL = os.path.join(SHP_DIR, "gpl_isocaudal.shp")
-TABLA_SECOND = os.path.join(XLS_DIR, "tb_second.xls")
+# PUNTOS_SECOND = os.path.join(SHP_DIR, "gpt_second.shp")
+# INTERSECT = os.path.join(SHP_DIR, "gpt_puntos_intersect.shp")
+# ISOCAUDAL = os.path.join(SHP_DIR, "gpl_isocaudal.shp")
+# TABLA_SECOND = os.path.join(XLS_DIR, "tb_second.xls")
 
-def create_river(flowacc, output, treshold=10):
+def create_river(flowacc, output, treshold=0.4):
     '''
     flowacc: Acumulacion de flujo de un mes de estiaje
     treshold: Umbral
@@ -35,7 +37,6 @@ def create_river(flowacc, output, treshold=10):
     arcpy.RasterToPolyline_conversion(river_umbral,
         output,
         'ZERO', '0', 'NO_SIMPLIFY', 'Value')
-
 
 def create_interview_points(river, distance, output):
     '''
@@ -97,14 +98,14 @@ def first_version(river_split, output):
     with arcpy.da.UpdateCursor(river_split, [ID_EVAL]) as cursor:
         for x in cursor:
             n += 1
-            x[0] = str(n).zfill(4)
+            x[0] = "ID" + str(n).zfill(4)
             cursor.updateRow(x)
     puntos_vertices = arcpy.FeatureVerticesToPoints_management(
         river_split, 
         output,
         "BOTH_ENDS")
 
-    LISTA_Q = [[os.path.join(RASTER_DIR, "facc_" + str(x).zfill(2)+"_min.tif"), "Q_" + str(x).zfill(2)] for x in range(1, 13)]
+    LISTA_Q = [[os.path.join(RASTER_DIR, "facc_" + str(x).zfill(2) + ".tif"), "Q_" + str(x).zfill(2)] for x in range(1, 13)]
     print(LISTA_Q)
 
     extract_points = arcpy.sa.ExtractMultiValuesToPoints(
@@ -149,8 +150,35 @@ def first_version_table(layer, tabla):
     df["POT_AN"] = df["POT_01"]+df["POT_02"]+df["POT_03"]+df["POT_04"]+df["POT_05"]+df["POT_06"]+df["POT_07"]+df["POT_08"]+df["POT_09"]+df["POT_10"]+df["POT_11"]+df["POT_12"]
 
     df = df[df['Z_DELTA'].notnull()]
+
+    df['CATEG'] = ""
+    df.loc[(df["Z_DELTA"] <= 15), 'CATEG'] = str('BAJO')
+    df.loc[(df["Z_DELTA"].between(15, 50)), 'CATEG'] = str('MEDIO')
+    df.loc[(df["Z_DELTA"] >= 50), 'CATEG'] = str('ALTO')
+
     df.to_excel(tabla)
 
+
+def first_version_post(puntos, tabla):
+    df = pd.read_excel(tabla)
+    dicc = {
+        "BAJO": list(df[df["Z_DELTA"] <= 15][ID_EVAL]),
+        "MEDIO": list(df[df["Z_DELTA"].between(15, 50)][ID_EVAL]),
+        "ALTO": list(df[df["Z_DELTA"] >= 15][ID_EVAL])
+    }
+
+    arcpy.AddField_management(puntos, "CATEG", "TEXT", "#", "#", 50)
+    with arcpy.da.UpdateCursor(puntos, [ID_EVAL, "CATEG"]) as cursor:
+        for x in cursor:
+            if x[0] in dicc["BAJO"]:
+                x[1] = "BAJO"
+            elif x[0] in dicc["MEDIO"]:
+                x[1] = "MEDIO"
+            elif x[0] in dicc["ALTO"]:
+                x[1] = "ALTO"
+            else:
+                x[1] = "SIN CATEGORIA"
+            cursor.updateRow(x)
 
 def second_version(river, interseccion, isocaudal, output):
     arcpy.CopyFeatures_management(interseccion, output)
@@ -239,7 +267,36 @@ def second_version_table(layer, tabla):
     df["POT_AN"] = df["POT_01"]+df["POT_02"]+df["POT_03"]+df["POT_04"]+df["POT_05"]+df["POT_06"]+df["POT_07"]+df["POT_08"]+df["POT_09"]+df["POT_10"]+df["POT_11"]+df["POT_12"]
 
     df = df[df['Z_DELTA'].notnull()]
+
+    df['CATEG'] = ""
+    df.loc[(df["Z_DELTA"] <= 15), 'CATEG'] = str('BAJO')
+    df.loc[(df["Z_DELTA"].between(15, 50)), 'CATEG'] = str('MEDIO')
+    df.loc[(df["Z_DELTA"] >= 50), 'CATEG'] = str('ALTO')
+
     df.to_excel(tabla)
+
+def second_version_post(puntos, tabla):
+    df = pd.read_excel(tabla)
+    dicc = {
+        "BAJO": list(df[df["Z_DELTA"] <= 15][ID_EVAL]),
+        "MEDIO": list(df[df["Z_DELTA"].between(15, 50)][ID_EVAL]),
+        "ALTO": list(df[df["Z_DELTA"] >= 15][ID_EVAL])
+    }
+
+    arcpy.AddField_management(puntos, "CATEG", "TEXT", "#", "#", 50)
+    with arcpy.da.UpdateCursor(puntos, [ID_EVAL, "CATEG"]) as cursor:
+        for x in cursor:
+            if x[0] in dicc["BAJO"]:
+                x[1] = "BAJO"
+            elif x[0] in dicc["MEDIO"]:
+                x[1] = "MEDIO"
+            elif x[0] in dicc["ALTO"]:
+                x[1] = "ALTO"
+            else:
+                x[1] = "SIN CATEGORIA"
+            cursor.updateRow(x)
+
+
 
 def eval_area(area, curvas, puntos_valor, puntos_curva):
     arcpy.DeleteRows_management(puntos_valor)
@@ -281,14 +338,14 @@ def eval_area(area, curvas, puntos_valor, puntos_curva):
     del cursorC
 
 def extract_from_raster(points):
-    list_raster = [os.path.join(RASTER_DIR, "facc_"+str(x).zfill(2)+".tif") for x in range(1, 13)]
+    list_raster = [os.path.join(RASTER_DIR, "facc_"+str(x).zfill(2) + ".tif") for x in range(1, 13)]
     list_raster += [DEM]
     arcpy.gp.ExtractMultiValuesToPoints_sa(
         points, list_raster)
 
 def main():
     # Crear variables
-    # create_river(FLOW_ACC_MIN, RED_HIDRICA)
+    create_river(FLOW_ACC_MIN, RED_HIDRICA)
     # create_interview_points(RED_HIDRICA, 5000, POINTS_RED_HIDRICA)
     # split_river(RED_HIDRICA, POINTS_RED_HIDRICA, SPLIT_RED_HIDRICA)
 
@@ -299,12 +356,21 @@ def main():
     # extract_from_raster(PUNTOS_CURVA)
 
     # Primera version
-    first_version(SPLIT_RED_HIDRICA, PUNTOS_FIRST)
-    first_version_table(PUNTOS_FIRST, TABLA_FIRST)
+    lista_distancia = [500, 1000, 5000]
+    for distancia in lista_distancia:
+        create_interview_points(RED_HIDRICA, distancia, POINTS_RED_HIDRICA)
+        split_river(RED_HIDRICA, POINTS_RED_HIDRICA, SPLIT_RED_HIDRICA)
+        PUNTOS_FIRST = os.path.join(SHP_DIR, "gpt_first_{}.shp".format(distancia))
+        TABLA_FIRST = os.path.join(XLS_DIR, "tb_first_{}.xls".format(distancia))
+
+        first_version(SPLIT_RED_HIDRICA, PUNTOS_FIRST)
+        first_version_table(PUNTOS_FIRST, TABLA_FIRST)
+        first_version_post(PUNTOS_FIRST, TABLA_FIRST)
 
     # Segunda version
-    second_version(RED_HIDRICA, INTERSECT, ISOCAUDAL, PUNTOS_SECOND)
-    second_version_table(PUNTOS_SECOND, TABLA_SECOND)
+    # second_version(RED_HIDRICA, INTERSECT, ISOCAUDAL, PUNTOS_SECOND)
+    # second_version_table(PUNTOS_SECOND, TABLA_SECOND)
+    # second_version_post(PUNTOS_SECOND, TABLA_SECOND)
 
 
 if __name__ == '__main__':

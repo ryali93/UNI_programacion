@@ -1,7 +1,7 @@
 from settings import *
 
 # Existing files
-DEM = os.path.join(RASTER_DIR, "dem_area_17s.tif")
+DEM = os.path.join(RASTER_DIR, "ra_dem.tif")
 RED_HIDRICA = os.path.join(SHP_DIR, "gpl_red_hidrica.shp")
 CURVAS = os.path.join(SHP_DIR, "gpl_curvas.shp")
 
