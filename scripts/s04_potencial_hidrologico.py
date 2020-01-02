@@ -3,8 +3,8 @@ from s00_funciones import *
 
 # Existing files
 DEM = os.path.join(RASTER_DIR, "ra_dem.tif")
-# SLOPE = os.path.join(RASTER_DIR, "slope_deg_17s.tif")
-FLOW_ACC_MIN = os.path.join(RASTER_DIR, "facc_08.tif")  # Acumulacion de flujo para mes 8 (agosto)
+SLOPE = os.path.join(RASTER_DIR, "slope_deg_17s.tif")
+FLOW_ACC_MIN = os.path.join(RASTER_DIR, "facc_08_min.tif")  # Acumulacion de flujo para mes 8 (agosto)
 
 # New files
 RED_HIDRICA = os.path.join(SHP_DIR, "gpl_red_hidrica.shp") # output
@@ -27,7 +27,7 @@ TABLA_FIRST = os.path.join(XLS_DIR, "tb_first_5000.xls")
 # ISOCAUDAL = os.path.join(SHP_DIR, "gpl_isocaudal.shp")
 # TABLA_SECOND = os.path.join(XLS_DIR, "tb_second.xls")
 
-def create_river(flowacc, output, treshold=0.4):
+def create_river(flowacc, output, treshold=1):
     '''
     flowacc: Acumulacion de flujo de un mes de estiaje
     treshold: Umbral
@@ -105,7 +105,7 @@ def first_version(river_split, output):
         output,
         "BOTH_ENDS")
 
-    LISTA_Q = [[os.path.join(RASTER_DIR, "facc_" + str(x).zfill(2) + ".tif"), "Q_" + str(x).zfill(2)] for x in range(1, 13)]
+    LISTA_Q = [[os.path.join(RASTER_DIR, "facc_" + str(x).zfill(2) + "_min.tif"), "Q_" + str(x).zfill(2)] for x in range(1, 13)]
     print(LISTA_Q)
 
     extract_points = arcpy.sa.ExtractMultiValuesToPoints(
@@ -373,5 +373,5 @@ def main():
     # second_version_post(PUNTOS_SECOND, TABLA_SECOND)
 
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()

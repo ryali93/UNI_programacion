@@ -1,4 +1,4 @@
-import os, arcpy
+import sys, os, arcpy
 import pandas as pd
 
 __author__ = 'Roy Marco Yali Samaniego, Leonardo Castillo Navarro'
@@ -19,7 +19,9 @@ TIPO = "TIPO"
 BASE_DIR = r'E:\2020\UNI'
 PROCESS_DIR = os.path.join(BASE_DIR, "process")
 
-path_cuenca = "1"
+# path_cuenca = "10"
+path_cuenca = "{}".format(sys.argv[1])
+print "Corriendo la cuenca : {}".format(path_cuenca)
 RASTER_DIR = os.path.join(PROCESS_DIR, path_cuenca)
 SHP_DIR = os.path.join(PROCESS_DIR, path_cuenca, "shp")
 XLS_DIR = os.path.join(PROCESS_DIR, path_cuenca, "xls")

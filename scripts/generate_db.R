@@ -4,14 +4,18 @@ install.packages("raster")
 install.packages("sf")
 install.packages("ncdf4")
 install.packages("ggplot2")
+install.packages("mapview")
 require("raster")
 require("ncdf4")
 require("sf")
 require("ggplot2")
+require("mapview")
+require("dplyr")
+
 
 
 # CARGANDO FUNCION PARA NORMALIZAR DATOS
-Resamplear<-function(objetivo, plantilla){
+Resamplear = function(objetivo, plantilla){
   #Verificar la proyecciÃ³n
   if(proj4string(plantilla)!=proj4string(objetivo)){
     print("las proyecciones son diferentes")
@@ -62,7 +66,7 @@ runoff = function(PP, CN){
 
 setwd("E:/2020/uni")
 
-cn = raster("data/raster/ra_cn.tif")
+cn = raster("data/raster/ra_cn_min.tif")
 dem_total = raster("data/raster/SRTM_90.tif")
 area_cuencas = st_read("data/shp/gpo_cuencas_eval.shp")
 pisco = brick("E:/BASE_DATOS/PISCO/PISCOpm21.nc")
@@ -71,49 +75,52 @@ pisco = brick("E:/BASE_DATOS/PISCO/PISCOpm21.nc")
 area_cuencas_wgs = st_transform(area_cuencas, crs = proj4string(pisco))
 area_cuencas_utm = st_transform(area_cuencas, crs = proj4string(cn))
 
-# faltan del 4to en adelante
-for(i in seq(nrow(area_cuencas_utm))){
+for(i in seq(nrow(area_cuencas_utm))[8:10]){
   print(as.character(area_cuencas_utm$NOMBRE[i]))
   path_basin = paste0("process/", i)
   pathdem  = paste0(path_basin, "/ra_dem.tif")
   pathfdir = paste0(path_basin, "/ra_fdir.tif")
   pathppst = paste0(path_basin, "/ra_ppst.tif")
-  pathqst  = paste0(path_basin, "/ra_qst.tif")
-  pathcn   = paste0(path_basin, "/ra_cn.tif")
+  pathqst  = paste0(path_basin, "/ra_qst_min.tif")
+  pathcn   = paste0(path_basin, "/ra_cn_min.tif")
   
-  dir.create(path_basin)
+  # dir.create(path_basin)
+  # dir.create(paste0(path_basin, "/shp"))
+  # dir.create(paste0(path_basin, "/xls"))
   buf      = st_as_sf(st_buffer(st_geometry(area_cuencas_utm[i,]), dist = 10000))
   buf_wgs  = st_as_sf(st_transform(buf, crs = proj4string(pisco)))
   
-  # plantilla res=100 | crs=utm8
+  # plantilla res=100 | crs=utm18
   cn_clip = mask(crop(cn, buf), buf)
-  
+
   dem_clip  = Resamplear(mask(crop(dem_total, buf_wgs), buf_wgs), cn_clip)
   pp_clip  = mask(crop(pisco, buf_wgs), buf_wgs)
   
-  pp_st = Resamplear(pp_mean_month(pp_clip), cn_clip)
-  q_st = runoff(pp_st, cn)
+  pp_st = pp_mean_month(Resamplear(pp_clip, cn_clip))
+  q_st = runoff(pp_st, cn_clip)
   
   # guardar archivos
-  writeRaster(dem_clip, pathdem, overwrite=TRUE)
-  terrain(dem_clip, opt="flowdir", unit="radians", neighbors=8, filename=pathfdir)
-  writeRaster(pp_st, pathppst, overwrite=TRUE)
+  # writeRaster(dem_clip, pathdem, overwrite=TRUE)
+  # terrain(dem_clip, opt="flowdir", unit="radians", neighbors=8, filename=pathfdir)
+  # writeRaster(pp_st, pathppst, overwrite=TRUE)
   writeRaster(q_st, pathqst, overwrite=TRUE)
   
-  writeRaster(q_st[[12]], paste0(path_basin, "/q_01_min.tif"))
-  writeRaster(q_st[[1]], paste0(path_basin, "/q_02_min.tif"))
-  writeRaster(q_st[[2]], paste0(path_basin, "/q_03_min.tif"))
-  writeRaster(q_st[[3]], paste0(path_basin, "/q_04_min.tif"))
-  writeRaster(q_st[[4]], paste0(path_basin, "/q_05_min.tif"))
-  writeRaster(q_st[[5]], paste0(path_basin, "/q_06_min.tif"))
-  writeRaster(q_st[[6]], paste0(path_basin, "/q_07_min.tif"))
-  writeRaster(q_st[[7]], paste0(path_basin, "/q_08_min.tif"))
-  writeRaster(q_st[[8]], paste0(path_basin, "/q_09_min.tif"))
-  writeRaster(q_st[[9]], paste0(path_basin, "/q_10_min.tif"))
-  writeRaster(q_st[[10]], paste0(path_basin, "/q_11_min.tif"))
-  writeRaster(q_st[[11]], paste0(path_basin, "/q_12_min.tif"))
+  writeRaster(q_st[[2]], paste0(path_basin, "/q_01_min.tif"), overwrite = TRUE)
+  writeRaster(q_st[[3]], paste0(path_basin, "/q_02_min.tif"), overwrite = TRUE)
+  writeRaster(q_st[[4]], paste0(path_basin, "/q_03_min.tif"), overwrite = TRUE)
+  writeRaster(q_st[[5]], paste0(path_basin, "/q_04_min.tif"), overwrite = TRUE)
+  writeRaster(q_st[[6]], paste0(path_basin, "/q_05_min.tif"), overwrite = TRUE)
+  writeRaster(q_st[[7]], paste0(path_basin, "/q_06_min.tif"), overwrite = TRUE)
+  writeRaster(q_st[[8]], paste0(path_basin, "/q_07_min.tif"), overwrite = TRUE)
+  writeRaster(q_st[[9]], paste0(path_basin, "/q_08_min.tif"), overwrite = TRUE)
+  writeRaster(q_st[[10]], paste0(path_basin, "/q_09_min.tif"), overwrite = TRUE)
+  writeRaster(q_st[[11]], paste0(path_basin, "/q_10_min.tif"), overwrite = TRUE)
+  writeRaster(q_st[[12]], paste0(path_basin, "/q_11_min.tif"), overwrite = TRUE)
+  writeRaster(q_st[[1]], paste0(path_basin, "/q_12_min.tif"), overwrite = TRUE)
+  
 }
 
+  plot(pp_st)
 
 
 # "1","Cuenca Piura"              --> "Sanchez Cerro 2" (21)
@@ -131,9 +138,12 @@ for(i in seq(nrow(area_cuencas_utm))){
 shp = sf::st_read("E:/2020/uni/data/shp/gpt_estaciones.shp")
 xls = read.csv("E:/2020/uni/data/xls/series_estaciones.csv", sep = ";")
 
+# cuencas = sf::st_read("E:/2020/uni/data/shp/gpo_cuencas_eval.shp")
+# mapview(list(shp, cuencas))
+
 df = data.frame(seq(1,12))
 extract_data_serie = function(i, row){
-  facc = stack(list.files(paste0("E:/2020/uni/process/", as.character(i)), pattern = "facc", full.names = T))
+  facc = stack(list.files(paste0("E:/2020/uni/process/", as.character(i)), pattern = "(facc_[0,1][0-9]_mean).tif$", full.names = T))
   e = t(as.data.frame(extract(facc, shp[row,])))
   if (length(row) == 1){
     colnames(e) = paste0("C_", as.character(i))
@@ -161,22 +171,45 @@ colnames(df)[1] = "mes"
 df
 xls
 
-ggplot(df, aes(x = mes)) +
-  geom_line(aes(y = C_1, colour="C_1")) +
-  geom_line(aes(y = C_3, colour="C_3")) +
-  geom_line(aes(y = C_4, colour="C_4")) +
-  geom_line(aes(y = C_4_1, colour="C_4_1")) +
-  geom_line(aes(y = C_5, colour="C_5")) +
-  geom_line(aes(y = C_6, colour="C_6")) +
-  geom_line(aes(y = C_7, colour="C_7")) +
-  geom_line(aes(y = C_8, colour="C_8")) +
-  geom_line(aes(y = C_8_1, colour="C_8_1")) +
-  geom_line(aes(y = C_9, colour="C_9")) +
-  geom_line(aes(y = C_9_1, colour="C_9_1")) +
-  geom_line(aes(y = C_10, colour="C_10"))
+
+mes = seq(as.Date('2019-01-01'), as.Date('2019-12-01'), by = 'month')
+valores = c(as.vector(df$C_1), as.vector(xls$SanchezCerro))        # "1","Cuenca Piura"
+valores = c(as.vector(df$C_2), as.vector(xls$QN2701))              # "2","Cuenca Chira"
+valores = c(as.vector(df$C_6), as.vector(xls$QN501))               # "6","Cuenca Jequetepeque"
+
+
+# "3","Cuenca Motupe"
+# "4","Cuenca Chancay-Lambayeque"
+# "5","Cuenca Zaña"
+
+# "7","Cuenca Virú"
+# "8","Cuenca Santa"
+# "9","Cuenca Pativilca"
+# "10","Cuenca Moche"
+
+grupo = c(rep("flowacc", 12), rep("estacion", 12))
+df6_9 = data.frame(mes, valores, grupo)
+
+Sys.setlocale(category = 'LC_ALL', locale = 'english')
+
+ggplot(df6_9, aes(x=mes, y=valores, shape = grupo, col = grupo)) +
+  geom_line(size = 1) + theme_bw() +
+  scale_colour_manual(values = c('blue', 'red')) +
+  ylab(label = 'Q [m^3/s]') +  xlab(label = '') +
+  ggtitle('Runoff', subtitle = 'from 1981 to 2017') + 
+  theme(plot.title    = element_text(size=16),
+        plot.subtitle = element_text(size=16),
+        axis.text.x   = element_text(size=12),
+        axis.text.y   = element_text(size=12),
+        axis.title    = element_text(size=17)) +
+  scale_x_date(date_labels = '%b', breaks = '1 month') +
+  scale_y_continuous(breaks = seq(0,100,10), limits = c(0, 100)) +
+  geom_point(size = 3.5)
+
 
 
 df1 = data.frame(df$mes, df$C_1,   xls$SanchezCerro)
+df2 = data.frame(df$mes, df$C_2,   xls$QN2701)
 df3 = data.frame(df$mes, df$C_3,   xls$Puchaca)
 df4 = data.frame(df$mes, df$C_4,   xls$QN603)
 df4_1 = data.frame(df$mes, df$C_4_1, xls$QN606)
@@ -189,19 +222,29 @@ df9 = data.frame(df$mes, df$C_9,   xls$Yanapampa)
 df9_1 = data.frame(df$mes, df$C_9_1, xls$QN304)
 df10 = data.frame(df$mes, df$C_10,  xls$Quirihuac)
 
-p1 <- ggplot(df1, aes(x = df.mes)) + theme_bw() +
-  geom_line(aes(y = df.C_1, col="C_1")) +
-  geom_line(aes(y = xls.SanchezCerro, col="SanchezCerro"))
+ggplot(df1, aes(x = df.mes)) + theme_bw() +
+  geom_line(aes(y = df.C_1, col="red"), linetype = "dashed") +
+  geom_point(aes(y = df.C_1, col="red", shape = 11), size=3) +
+  geom_line(aes(y = xls.SanchezCerro, col="blue")) +
+  # geom_point(aes(y = xls.SanchezCerro, col="blue"), size=3) +
+  
+  scale_shape_manual(values = c(24, 21), guide = "none") +
+  theme(legend.position="bottom")
 
-p2 <- ggplot(df3, aes(x = df.mes)) +
+p2 <- ggplot(df2, aes(x = df.mes)) + theme_bw() +
+  geom_line(aes(y = df.C_2, col="C_2", linetype = "dashed")) +
+  geom_line(aes(y = xls.QN2701, col="SanchezCerro"))
+
+
+p3 <- ggplot(df3, aes(x = df.mes)) +
   geom_line(aes(y = df.C_3, col="C_3")) +
   geom_line(aes(y = xls.Puchaca, col="Puchaca"))
 
-p3 <- ggplot(df4, aes(x = df.mes)) +
+p4 <- ggplot(df4, aes(x = df.mes)) +
   geom_line(aes(y = df.C_4, col="C_4")) +
   geom_line(aes(y = xls.QN603, col="QN603"))
 
-p4 <- ggplot(df4_1, aes(x = df.mes)) +
+p4_1 <- ggplot(df4_1, aes(x = df.mes)) +
   geom_line(aes(y = df.C_4_1, col="C_4_1")) +
   geom_line(aes(y = xls.QN606, col="QN606"))
 
@@ -239,3 +282,13 @@ ggplot(df9_1, aes(x = df.mes)) +
 ggplot(df10, aes(x = df.mes)) +
   geom_line(aes(y = df.C_10, col="C_10")) +
   geom_line(aes(y = xls.Quirihuac, col="Quirihuac"))
+
+
+
+
+
+st = stack("E:/2020/uni/process/1/ra_ppst.tif")
+plot(st[[1]])
+
+qst = stack("E:/2020/uni/process/1/ra_qst.tif")
+plot(qst[[3]])
