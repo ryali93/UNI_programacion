@@ -120,9 +120,6 @@ for(i in seq(nrow(area_cuencas_utm))[8:10]){
   
 }
 
-  plot(pp_st)
-
-
 # "1","Cuenca Piura"              --> "Sanchez Cerro 2" (21)
 # "2","Cuenca Chira"              --> "QN-2701" (17)
 # "3","Cuenca Motupe"             --> "Puchaca" (6)
@@ -134,6 +131,12 @@ for(i in seq(nrow(area_cuencas_utm))[8:10]){
 # "9","Cuenca Pativilca"          --> "Yanapampa" (10), "QN-304" (18)
 # "10","Cuenca Moche"             --> "Quirihuac" (7)
 
+
+##############################
+##############################
+# ********* GRAFICOS *********
+##############################
+##############################
 
 shp = sf::st_read("E:/2020/uni/data/shp/gpt_estaciones.shp")
 xls = read.csv("E:/2020/uni/data/xls/series_estaciones.csv", sep = ";")
@@ -166,129 +169,71 @@ df = extract_data_serie(7, 8)
 df = extract_data_serie(8, c(9, 12))
 df = extract_data_serie(9, c(10, 18))
 df = extract_data_serie(10, 7)
-
 colnames(df)[1] = "mes"
-df
-xls
 
 
-mes = seq(as.Date('2019-01-01'), as.Date('2019-12-01'), by = 'month')
-valores = c(as.vector(df$C_1), as.vector(xls$SanchezCerro))        # "1","Cuenca Piura"
-valores = c(as.vector(df$C_2), as.vector(xls$QN2701))              # "2","Cuenca Chira"
-valores = c(as.vector(df$C_6), as.vector(xls$QN501))               # "6","Cuenca Jequetepeque"
-
-
-# "3","Cuenca Motupe"
-# "4","Cuenca Chancay-Lambayeque"
-# "5","Cuenca Zaña"
-
-# "7","Cuenca Virú"
-# "8","Cuenca Santa"
-# "9","Cuenca Pativilca"
-# "10","Cuenca Moche"
-
-grupo = c(rep("flowacc", 12), rep("estacion", 12))
-df6_9 = data.frame(mes, valores, grupo)
-
-Sys.setlocale(category = 'LC_ALL', locale = 'english')
-
-ggplot(df6_9, aes(x=mes, y=valores, shape = grupo, col = grupo)) +
-  geom_line(size = 1) + theme_bw() +
-  scale_colour_manual(values = c('blue', 'red')) +
-  ylab(label = 'Q [m^3/s]') +  xlab(label = '') +
-  ggtitle('Runoff', subtitle = 'from 1981 to 2017') + 
-  theme(plot.title    = element_text(size=16),
-        plot.subtitle = element_text(size=16),
-        axis.text.x   = element_text(size=12),
-        axis.text.y   = element_text(size=12),
-        axis.title    = element_text(size=17)) +
-  scale_x_date(date_labels = '%b', breaks = '1 month') +
-  scale_y_continuous(breaks = seq(0,100,10), limits = c(0, 100)) +
-  geom_point(size = 3.5)
+valoresC_1 = c(as.vector(df$C_1), as.vector(xls$SanchezCerro))        # "1","Cuenca Piura"
+valoresC_2 = c(as.vector(df$C_2), as.vector(xls$QN2701))              # "2","Cuenca Chira"
+valoresC_3 = c(as.vector(df$C_3), as.vector(xls$Puchaca))             # "3","Cuenca Motupe"
+valoresC_4 = c(as.vector(df$C_4), as.vector(xls$QN603))               # "4","Cuenca Chancay-Lambayeque"
+valoresC_4_1 = c(as.vector(df$C_4_1), as.vector(xls$QN606))           # "4","Cuenca Chancay-Lambayeque"
+valoresC_5 = c(as.vector(df$C_5), as.vector(xls$Batan))               # "5","Cuenca Zaña"
+valoresC_6 = c(as.vector(df$C_6), as.vector(xls$QN501))               # "6","Cuenca Jequetepeque"
+valoresC_7 = c(as.vector(df$C_7), as.vector(xls$Huacapongo))          # "7","Cuenca Virú"
+valoresC_8 = c(as.vector(df$C_8), as.vector(xls$Condorcerro))         # "8","Cuenca Santa"
+valoresC_8_1 = c(as.vector(df$C_8_1), as.vector(xls$QN403))           # "8","Cuenca Santa"
+valoresC_9 = c(as.vector(df$C_9), as.vector(xls$Yanapampa))           # "9","Cuenca Pativilca"
+valoresC_9_1 = c(as.vector(df$C_9_1), as.vector(xls$QN304))           # "9","Cuenca Pativilca"
+valoresC_10 = c(as.vector(df$C_10), as.vector(xls$Quirihuac))         # "10","Cuenca Moche"
 
 
 
-df1 = data.frame(df$mes, df$C_1,   xls$SanchezCerro)
-df2 = data.frame(df$mes, df$C_2,   xls$QN2701)
-df3 = data.frame(df$mes, df$C_3,   xls$Puchaca)
-df4 = data.frame(df$mes, df$C_4,   xls$QN603)
-df4_1 = data.frame(df$mes, df$C_4_1, xls$QN606)
-df5 = data.frame(df$mes, df$C_5,   xls$Batan)
-df6 = data.frame(df$mes, df$C_6,   xls$QN501)
-df7 = data.frame(df$mes, df$C_7,   xls$Huacapongo)
-df8 = data.frame(df$mes, df$C_8,   xls$Condorcerro)
-df8_1 = data.frame(df$mes, df$C_8_1, xls$QN403)
-df9 = data.frame(df$mes, df$C_9,   xls$Yanapampa)
-df9_1 = data.frame(df$mes, df$C_9_1, xls$QN304)
-df10 = data.frame(df$mes, df$C_10,  xls$Quirihuac)
+grafico = function(datos, nombre){
+  val_max = (as.integer(max(datos) / 20) + 1) * 20
+  mes = seq(as.Date('2019-01-01'), as.Date('2019-12-01'), by = 'month')
+  grupo = c(rep("flowacc", 12), rep("estacion", 12))
+  dataf = data.frame(mes, datos, grupo)
+  Sys.setlocale(category = 'LC_ALL', locale = 'english')
+  ploteo = ggplot(dataf, aes(x=mes, y=datos, shape = grupo, col = grupo)) +
+    geom_line(size = 1) + theme_bw() + 
+    theme(plot.title = element_text(face='bold')) +
+    scale_colour_manual(values = c('blue', 'red')) +
+    ylab(label = 'Q [m3/s]') +  xlab(label = '') +
+    ggtitle(nombre, subtitle = 'from 1981 to 2017') + 
+    theme(plot.title    = element_text(size=16),
+          plot.subtitle = element_text(size=16),
+          axis.text.x   = element_text(size=12),
+          axis.text.y   = element_text(size=12),
+          axis.title    = element_text(size=17)) +
+    scale_x_date(date_labels = '%b', breaks = '1 month') +
+    scale_y_continuous(breaks = seq(0, val_max, 20), limits = c(0, val_max)) +
+    geom_point(size = 3.5)
+  return(ploteo)
+}
 
-ggplot(df1, aes(x = df.mes)) + theme_bw() +
-  geom_line(aes(y = df.C_1, col="red"), linetype = "dashed") +
-  geom_point(aes(y = df.C_1, col="red", shape = 11), size=3) +
-  geom_line(aes(y = xls.SanchezCerro, col="blue")) +
-  # geom_point(aes(y = xls.SanchezCerro, col="blue"), size=3) +
-  
-  scale_shape_manual(values = c(24, 21), guide = "none") +
-  theme(legend.position="bottom")
-
-p2 <- ggplot(df2, aes(x = df.mes)) + theme_bw() +
-  geom_line(aes(y = df.C_2, col="C_2", linetype = "dashed")) +
-  geom_line(aes(y = xls.QN2701, col="SanchezCerro"))
-
-
-p3 <- ggplot(df3, aes(x = df.mes)) +
-  geom_line(aes(y = df.C_3, col="C_3")) +
-  geom_line(aes(y = xls.Puchaca, col="Puchaca"))
-
-p4 <- ggplot(df4, aes(x = df.mes)) +
-  geom_line(aes(y = df.C_4, col="C_4")) +
-  geom_line(aes(y = xls.QN603, col="QN603"))
-
-p4_1 <- ggplot(df4_1, aes(x = df.mes)) +
-  geom_line(aes(y = df.C_4_1, col="C_4_1")) +
-  geom_line(aes(y = xls.QN606, col="QN606"))
-
-
-ggarrange(p1,p2,p3,p4)
-
-ggplot(df5, aes(x = df.mes)) +
-  geom_line(aes(y = df.C_5, col="C_5")) +
-  geom_line(aes(y = xls.Batan, col="Batan"))
-
-ggplot(df6, aes(x = df.mes)) +
-  geom_line(aes(y = df.C_6, col="C_6")) +
-  geom_line(aes(y = xls.QN501, col="QN501"))
-
-ggplot(df7, aes(x = df.mes)) +
-  geom_line(aes(y = df.C_7, col="C_7")) +
-  geom_line(aes(y = xls.Huacapongo, col="Huacapongo"))
-
-ggplot(df8, aes(x = df.mes)) +
-  geom_line(aes(y = df.C_8, col="C_8")) +
-  geom_line(aes(y = xls.Condorcerro, col="Condorcerro"))
-
-ggplot(df8_1, aes(x = df.mes)) +
-  geom_line(aes(y = df.C_8_1, col="C_8_1")) +
-  geom_line(aes(y = xls.QN403, col="QN403"))
-
-ggplot(df9, aes(x = df.mes)) +
-  geom_line(aes(y = df.C_9, col="C_9")) +
-  geom_line(aes(y = xls.Yanapampa, col="Yanapampa"))
-
-ggplot(df9_1, aes(x = df.mes)) +
-  geom_line(aes(y = df.C_9_1, col="C_9_1")) +
-  geom_line(aes(y = xls.QN304, col="QN304"))
-
-ggplot(df10, aes(x = df.mes)) +
-  geom_line(aes(y = df.C_10, col="C_10")) +
-  geom_line(aes(y = xls.Quirihuac, col="Quirihuac"))
-
-
-
-
-
-st = stack("E:/2020/uni/process/1/ra_ppst.tif")
-plot(st[[1]])
-
-qst = stack("E:/2020/uni/process/1/ra_qst.tif")
-plot(qst[[3]])
+grafico(valoresC_1, "Cuenca Piura")
+ggsave("process/1/img/station_runoff.png", width = 250, height = 180, units = "mm", dpi = 300)
+grafico(valoresC_2, "Cuenca Chira")
+ggsave("process/2/img/station_runoff.png", width = 250, height = 180, units = "mm", dpi = 300)
+grafico(valoresC_3, "Cuenca Motupe")
+ggsave("process/3/img/station_runoff.png", width = 250, height = 180, units = "mm", dpi = 300)
+grafico(valoresC_4, "Cuenca Chancay-Lambayeque")
+ggsave("process/4/img/station_runoff.png", width = 250, height = 180, units = "mm", dpi = 300)
+grafico(valoresC_4_1, "Cuenca Chancay-Lambayeque")
+ggsave("process/4/img/station_runoff_1.png", width = 250, height = 180, units = "mm", dpi = 300)
+grafico(valoresC_5, "Cuenca Zaña")
+ggsave("process/5/img/station_runoff.png", width = 250, height = 180, units = "mm", dpi = 300)
+grafico(valoresC_6, "Cuenca Jequetepeque")
+ggsave("process/6/img/station_runoff.png", width = 250, height = 180, units = "mm", dpi = 300)
+grafico(valoresC_7, "Cuenca Virú")
+ggsave("process/7/img/station_runoff.png", width = 250, height = 180, units = "mm", dpi = 300)
+grafico(valoresC_8, "Cuenca Santa")
+ggsave("process/8/img/station_runoff.png", width = 250, height = 180, units = "mm", dpi = 300)
+grafico(valoresC_8_1, "Cuenca Santa")
+ggsave("process/8/img/station_runoff_1.png", width = 250, height = 180, units = "mm", dpi = 300)
+grafico(valoresC_9, "Cuenca Pativilca")
+ggsave("process/9/img/station_runoff.png", width = 250, height = 180, units = "mm", dpi = 300)
+grafico(valoresC_9_1, "Cuenca Pativilca")
+ggsave("process/9/img/station_runoff_1.png", width = 250, height = 180, units = "mm", dpi = 300)
+grafico(valoresC_10, "Cuenca Moche")
+ggsave("process/10/img/station_runoff.png", width = 250, height = 180, units = "mm", dpi = 300)
