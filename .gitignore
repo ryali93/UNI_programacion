@@ -9,8 +9,21 @@ maps/
 *.pptx
 *.mxd
 *.pyc
+*.Rhistory
 =======
 /shp
 /raster
 /kmz
+
+/.idea
+/enviar
+/process
+/process_old
+/process_ch_max
+/process_ch_min
+/process_cn_max
+/process_cn_min
+/process_cs_max
+/process_cs_min
+
 >>>>>>> 229ecfb464c643a6179450dc6bb8f058e66c39d1

@@ -4,7 +4,7 @@ from s00_funciones import *
 # Existing files
 DEM = os.path.join(RASTER_DIR, "ra_dem.tif")
 SLOPE = os.path.join(RASTER_DIR, "slope_deg_17s.tif")
-FLOW_ACC_MIN = os.path.join(RASTER_DIR, "facc_08_min.tif")  # Acumulacion de flujo para mes 8 (agosto)
+FLOW_ACC_MIN = os.path.join(RASTER_DIR, "facc_08.tif")  # Acumulacion de flujo para mes 8 (agosto)
 
 # New files
 RED_HIDRICA = os.path.join(SHP_DIR, "gpl_red_hidrica.shp") # output
@@ -18,8 +18,8 @@ SPLIT_RED_HIDRICA = os.path.join(SHP_DIR, "gpl_red_hidrica_split.shp") # output
 # EVAL_AREA = os.path.join(SHP_DIR, "gpo_area_eval.shp")
 
 # FIRST VERSION
-PUNTOS_FIRST = os.path.join(SHP_DIR, "gpt_first_5000.shp")
-TABLA_FIRST = os.path.join(XLS_DIR, "tb_first_5000.xls")
+# PUNTOS_FIRST = os.path.join(SHP_DIR, "gpt_first_5000.shp")
+# TABLA_FIRST = os.path.join(XLS_DIR, "tb_first_5000.xls")
 
 # SECOND VERSION
 # PUNTOS_SECOND = os.path.join(SHP_DIR, "gpt_second.shp")
@@ -105,7 +105,7 @@ def first_version(river_split, output):
         output,
         "BOTH_ENDS")
 
-    LISTA_Q = [[os.path.join(RASTER_DIR, "facc_" + str(x).zfill(2) + "_min.tif"), "Q_" + str(x).zfill(2)] for x in range(1, 13)]
+    LISTA_Q = [[os.path.join(RASTER_DIR, "facc_" + str(x).zfill(2) + ".tif"), "Q_" + str(x).zfill(2)] for x in range(1, 13)]
     print(LISTA_Q)
 
     extract_points = arcpy.sa.ExtractMultiValuesToPoints(
@@ -282,7 +282,6 @@ def second_version_post(puntos, tabla):
         "MEDIO": list(df[df["Z_DELTA"].between(15, 50)][ID_EVAL]),
         "ALTO": list(df[df["Z_DELTA"] >= 15][ID_EVAL])
     }
-
     arcpy.AddField_management(puntos, "CATEG", "TEXT", "#", "#", 50)
     with arcpy.da.UpdateCursor(puntos, [ID_EVAL, "CATEG"]) as cursor:
         for x in cursor:
@@ -295,7 +294,6 @@ def second_version_post(puntos, tabla):
             else:
                 x[1] = "SIN CATEGORIA"
             cursor.updateRow(x)
-
 
 
 def eval_area(area, curvas, puntos_valor, puntos_curva):
@@ -360,8 +358,8 @@ def main():
     for distancia in lista_distancia:
         create_interview_points(RED_HIDRICA, distancia, POINTS_RED_HIDRICA)
         split_river(RED_HIDRICA, POINTS_RED_HIDRICA, SPLIT_RED_HIDRICA)
-        PUNTOS_FIRST = os.path.join(SHP_DIR, "gpt_first_{}.shp".format(distancia))
-        TABLA_FIRST = os.path.join(XLS_DIR, "tb_first_{}.xls".format(distancia))
+        PUNTOS_FIRST = os.path.join(SHP_DIR, "gpt_first_{}_qmean.shp".format(distancia))
+        TABLA_FIRST = os.path.join(XLS_DIR, "tb_first_{}_qmean.xls".format(distancia))
 
         first_version(SPLIT_RED_HIDRICA, PUNTOS_FIRST)
         first_version_table(PUNTOS_FIRST, TABLA_FIRST)
