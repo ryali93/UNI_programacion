@@ -13,9 +13,9 @@ require("hydroGOF")
 setwd("E:/2020/uni")
 
 # ESCENARIO
-ESCENARIO = "ra_cn_cs_min"
-PROCESO = "process_cs_min"
-SUBTITULO = "PP MEAN - CN min'"
+ESCENARIO = "ra_cn_ch_min"
+PROCESO = "process_ch_min"
+SUBTITULO = "PP MEAN - CH min"
 
 # Variables locales
 shp = st_read("data/shp/gpt_estaciones.shp")

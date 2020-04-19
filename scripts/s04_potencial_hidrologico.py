@@ -44,13 +44,11 @@ def create_interview_points(river, distance, output):
     distance: Separacion entre los puntos del cauce
     output: Salida de puntos creados
     '''
-    create_points(
-        polyline=river,
-        choice='INTERVAL BY DISTANCE', 
-        start_from='BEGINNING', 
-        distance=distance, 
-        end_points='BOTH', 
-        output=output)
+    arcpy.GeneratePointsAlongLines_management(
+        river,
+        output,
+        'DISTANCE',
+        Distance='{} meters'.format(distance))
 
 def split_river(river, points, output):
     '''
@@ -133,19 +131,20 @@ def first_version_table(layer, tabla):
              'Q_12': lambda x: round(max(x), 2),
         }
     )
+
     df["Z_DELTA"] = df["Z_TOMA"] - df["Z_RIO"]
-    df["POT_01"] = df["Q_01"] * df["Z_DELTA"] * 9810 / 1000000
-    df["POT_02"] = df["Q_02"] * df["Z_DELTA"] * 9810 / 1000000
-    df["POT_03"] = df["Q_03"] * df["Z_DELTA"] * 9810 / 1000000
-    df["POT_04"] = df["Q_04"] * df["Z_DELTA"] * 9810 / 1000000
-    df["POT_05"] = df["Q_05"] * df["Z_DELTA"] * 9810 / 1000000
-    df["POT_06"] = df["Q_06"] * df["Z_DELTA"] * 9810 / 1000000
-    df["POT_07"] = df["Q_07"] * df["Z_DELTA"] * 9810 / 1000000
-    df["POT_08"] = df["Q_08"] * df["Z_DELTA"] * 9810 / 1000000
-    df["POT_09"] = df["Q_09"] * df["Z_DELTA"] * 9810 / 1000000
-    df["POT_10"] = df["Q_10"] * df["Z_DELTA"] * 9810 / 1000000
-    df["POT_11"] = df["Q_11"] * df["Z_DELTA"] * 9810 / 1000000
-    df["POT_12"] = df["Q_12"] * df["Z_DELTA"] * 9810 / 1000000
+    df["POT_01"] = df["Q_01"] * df["Z_DELTA"] * 0.8 * 9810 / 1000000
+    df["POT_02"] = df["Q_02"] * df["Z_DELTA"] * 0.8 * 9810 / 1000000
+    df["POT_03"] = df["Q_03"] * df["Z_DELTA"] * 0.8 * 9810 / 1000000
+    df["POT_04"] = df["Q_04"] * df["Z_DELTA"] * 0.8 * 9810 / 1000000
+    df["POT_05"] = df["Q_05"] * df["Z_DELTA"] * 0.8 * 9810 / 1000000
+    df["POT_06"] = df["Q_06"] * df["Z_DELTA"] * 0.8 * 9810 / 1000000
+    df["POT_07"] = df["Q_07"] * df["Z_DELTA"] * 0.8 * 9810 / 1000000
+    df["POT_08"] = df["Q_08"] * df["Z_DELTA"] * 0.8 * 9810 / 1000000
+    df["POT_09"] = df["Q_09"] * df["Z_DELTA"] * 0.8 * 9810 / 1000000
+    df["POT_10"] = df["Q_10"] * df["Z_DELTA"] * 0.8 * 9810 / 1000000
+    df["POT_11"] = df["Q_11"] * df["Z_DELTA"] * 0.8 * 9810 / 1000000
+    df["POT_12"] = df["Q_12"] * df["Z_DELTA"] * 0.8 * 9810 / 1000000
 
     df["POT_AN"] = df["POT_01"]+df["POT_02"]+df["POT_03"]+df["POT_04"]+df["POT_05"]+df["POT_06"]+df["POT_07"]+df["POT_08"]+df["POT_09"]+df["POT_10"]+df["POT_11"]+df["POT_12"]
 
@@ -156,11 +155,28 @@ def first_version_table(layer, tabla):
     df.loc[(df["Z_DELTA"].between(15, 50)), 'CATEG'] = str('MEDIO')
     df.loc[(df["Z_DELTA"] >= 50), 'CATEG'] = str('ALTO')
 
-    df.to_excel(tabla)
+    df_coords = first_coordenadas_post(layer)
 
+    df = pd.merge(df, df_coords, on='Z_TOMA', how='inner')
+    df.to_csv(tabla)
+
+def first_coordenadas_post(layer):
+    df_np = pd.DataFrame(arcpy.da.FeatureClassToNumPyArray(layer, ["ID_EVAL", "Z_TOMA", "SHAPE@X", "SHAPE@Y"]))
+    df_min = df_np.groupby(['ID_EVAL']).agg({'Z_TOMA': 'min'})
+    ival_ztoma = zip(list(df_min.Z_TOMA.index), list(df_min.Z_TOMA))
+
+    dicc = {"ID_EVAL": [], "Z_TOMA": [], "X": [], "Y": []}
+    with arcpy.da.SearchCursor(layer, ["ID_EVAL", "Z_TOMA", "SHAPE@X", "SHAPE@Y"]) as cursor:
+        for x in cursor:
+            if (x[0], x[1]) not in ival_ztoma:
+                dicc["ID_EVAL"].append(x[0])
+                dicc["Z_TOMA"].append(x[1])
+                dicc["X"].append(x[2])
+                dicc["Y"].append(x[3])
+    return pd.DataFrame(dicc)
 
 def first_version_post(puntos, tabla):
-    df = pd.read_excel(tabla)
+    df = pd.read_csv(tabla)
     dicc = {
         "BAJO": list(df[df["Z_DELTA"] <= 15][ID_EVAL]),
         "MEDIO": list(df[df["Z_DELTA"].between(15, 50)][ID_EVAL]),
@@ -179,6 +195,10 @@ def first_version_post(puntos, tabla):
             else:
                 x[1] = "SIN CATEGORIA"
             cursor.updateRow(x)
+
+def first_version_post_2(puntos, tabla):
+    xy_event = arcpy.MakeXYEventLayer_management(tabla, "X", "Y", "in_memory\\puntos", arcpy.SpatialReference(32718))
+    arcpy.CopyFeatures_management(xy_event, puntos)
 
 def second_version(river, interseccion, isocaudal, output):
     arcpy.CopyFeatures_management(interseccion, output)
@@ -354,16 +374,22 @@ def main():
     # extract_from_raster(PUNTOS_CURVA)
 
     # Primera version
-    lista_distancia = [500, 1000, 5000]
+    # lista_distancia = [500, 1000, 5000]
+    lista_distancia = [5000]
     for distancia in lista_distancia:
         create_interview_points(RED_HIDRICA, distancia, POINTS_RED_HIDRICA)
         split_river(RED_HIDRICA, POINTS_RED_HIDRICA, SPLIT_RED_HIDRICA)
+
+        print(len([x for x in arcpy.da.SearchCursor(POINTS_RED_HIDRICA, ["FID"])]))
+
         PUNTOS_FIRST = os.path.join(SHP_DIR, "gpt_first_{}_qmean.shp".format(distancia))
-        TABLA_FIRST = os.path.join(XLS_DIR, "tb_first_{}_qmean.xls".format(distancia))
+        PUNTOS_FIRST_Q = os.path.join(SHP_DIR, "gpt_{}_q.shp".format(distancia))
+        TABLA_FIRST = os.path.join(XLS_DIR, "tb_first_{}_qmean.csv".format(distancia))
 
         first_version(SPLIT_RED_HIDRICA, PUNTOS_FIRST)
         first_version_table(PUNTOS_FIRST, TABLA_FIRST)
         first_version_post(PUNTOS_FIRST, TABLA_FIRST)
+        first_version_post_2(PUNTOS_FIRST_Q, TABLA_FIRST)
 
     # Segunda version
     # second_version(RED_HIDRICA, INTERSECT, ISOCAUDAL, PUNTOS_SECOND)

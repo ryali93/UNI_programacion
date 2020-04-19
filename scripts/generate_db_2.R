@@ -14,20 +14,8 @@ require("ggplot2")
 require("mapview")
 require("dplyr")
 require("stringr")
-# require("gdalcubes")
-# require("stars")
-
-
-# cl <- makeCluster(4)
-# parLapply(cl, iter, lm_boot_fun)
-
-setwd("E:/2020/uni")
-cn = raster("data/raster/ra_cn_cs_max.tif")
-dem_total = raster("data/raster/SRTM_90.tif")
-area_cuencas = st_read("data/shp/gpo_cuencas_eval.shp")
-pisco = brick("E:/BASE_DATOS/PISCO/PISCOpm21.nc")
-area_cuencas_wgs = st_transform(area_cuencas, crs = proj4string(pisco))
-area_cuencas_utm = st_transform(area_cuencas, crs = proj4string(cn))
+require("dplyr")
+require("stringr")
 
 #------------------------------------------------------------------------
 # CARGANDO FUNCION PARA NORMALIZAR DATOS
@@ -71,121 +59,6 @@ pp_mean_month = function(PP){
   pp_st = stack(pp_st)
   return(pp_st)
 }
-pp_month = function(PP){
-  pp_st = c()
-  for (mes in c(seq(1,11), 0)){
-    l = c()
-    for(i in 1:432){
-      if(i %% 12 == mes){
-        l = c(l, PP[[i]])
-      }
-    }
-    lista = stack(l)
-    pp_st = c(pp_st, lista)
-  }
-  return(pp_st)
-}
-runoff = function(PP, CN){
-  # CREAR CAUDAL A PARTIR DE NC
-  S = (25400 / CN) - 254
-  IA = 0.2*S
-  Q = (PP - IA)^2 / (PP - IA + S)
-  Q2 = (Q * 10000)/ (30*24*60*60*1000)
-  # CAUDAL MEDIA
-  # Q3 = mean(Q2)
-  # PERSISTENCIA AL 95%
-  Q3 = calc(Q2, fun=function(x) quantile(x, .05, na.rm=TRUE))
-  return(Q3)
-}
-
-crear_caudales = function(i){
-  i = 5
-  print(as.character(area_cuencas_utm$NOMBRE[i]))
-  path_basin = paste0("process_cs_max_q95/", i)
-  
-  pathfdir = paste0(path_basin, "/ra_fdir.tif")
-  pathcn   = paste0("data/raster", "/ra_cn_ch_max", i, ".tif")
-  pathppst = paste0("data/raster", "/ra_ppst_", i, ".tif")
-  pathdem  = paste0("data/raster", "/ra_dem_", i, ".tif")
-  pathqst  = paste0(path_basin, "/ra_qst.tif")
-
-  dir.create(path_basin)
-  dir.create(paste0(path_basin, "/shp"))
-  dir.create(paste0(path_basin, "/xls"))
-  dir.create(paste0(path_basin, "/img"))
-  buf      = st_as_sf(st_buffer(st_geometry(area_cuencas_utm[i,]), dist = 10000))
-  buf_wgs  = st_as_sf(st_transform(buf, crs = proj4string(pisco)))
-  
-  # plantilla res=100 | crs=utm18
-  if(!file.exists(pathcn)){
-    cn_clip = mask(crop(cn, buf), buf)
-    writeRaster(cn_clip, pathcn, overwrite=TRUE)
-  }else{
-    cn_clip = raster(pathcn)
-    }
-  
-  if(!file.exists(pathdem)){
-    dem_clip  = Resamplear(mask(crop(dem_total, buf_wgs), buf_wgs), cn_clip)
-    writeRaster(dem_clip, pathdem, overwrite=TRUE)
-  }else{
-    dem_clip = raster(pathdem)
-  }
-  
-  pp_clip  = mask(crop(pisco, buf_wgs), buf_wgs)
-
-  if(!file.exists(pathppst)){
-    pp_st = pp_month(Resamplear(pp_clip, cn_clip))
-    writeRaster(stack(pp_st), pathppst, overwrite=TRUE)
-  }else{
-    pp_st = stack(pathppst)
-  }
-  
-  q_st = runoff(pp_st, cn_clip)
-  # 
-  # # guardar archivos
-  # writeRaster(q_st, pathqst, overwrite=TRUE)
-  # 
-  writeRaster(q_st[[2]], paste0(path_basin, "/q_01.tif"), overwrite = TRUE)
-  writeRaster(q_st[[3]], paste0(path_basin, "/q_02.tif"), overwrite = TRUE)
-  writeRaster(q_st[[4]], paste0(path_basin, "/q_03.tif"), overwrite = TRUE)
-  writeRaster(q_st[[5]], paste0(path_basin, "/q_04.tif"), overwrite = TRUE)
-  writeRaster(q_st[[6]], paste0(path_basin, "/q_05.tif"), overwrite = TRUE)
-  writeRaster(q_st[[7]], paste0(path_basin, "/q_06.tif"), overwrite = TRUE)
-  writeRaster(q_st[[8]], paste0(path_basin, "/q_07.tif"), overwrite = TRUE)
-  writeRaster(q_st[[9]], paste0(path_basin, "/q_08.tif"), overwrite = TRUE)
-  writeRaster(q_st[[10]], paste0(path_basin, "/q_09.tif"), overwrite = TRUE)
-  writeRaster(q_st[[11]], paste0(path_basin, "/q_10.tif"), overwrite = TRUE)
-  writeRaster(q_st[[12]], paste0(path_basin, "/q_11.tif"), overwrite = TRUE)
-  writeRaster(q_st[[1]], paste0(path_basin, "/q_12.tif"), overwrite = TRUE)
-}
-
-
-crear_caudales_2 = function(i){
-  print(as.character(area_cuencas_utm$NOMBRE[i]))
-  path_basin = paste0("process_cs_max_q95/", i)
-  pathcn   = paste0("data/raster", "/ra_cn_cs_max", i, ".tif")
-  pathppst = paste0("data/raster", "/ra_ppst_", i, ".tif")
-  pathqst  = paste0(path_basin, "/ra_qst.tif")
-  
-  cn_clip = raster(pathcn)
-  pp_st = pp_month(stack(pathppst))
-  
-  # guardar archivos
-  writeRaster(runoff(pp_st[[2]], cn_clip), paste0(path_basin, "/q_01.tif"), overwrite = TRUE)
-  writeRaster(runoff(pp_st[[3]], cn_clip), paste0(path_basin, "/q_02.tif"), overwrite = TRUE)
-  writeRaster(runoff(pp_st[[4]], cn_clip), paste0(path_basin, "/q_03.tif"), overwrite = TRUE)
-  writeRaster(runoff(pp_st[[5]], cn_clip), paste0(path_basin, "/q_04.tif"), overwrite = TRUE)
-  writeRaster(runoff(pp_st[[6]], cn_clip), paste0(path_basin, "/q_05.tif"), overwrite = TRUE)
-  writeRaster(runoff(pp_st[[7]], cn_clip), paste0(path_basin, "/q_06.tif"), overwrite = TRUE)
-  writeRaster(runoff(pp_st[[8]], cn_clip), paste0(path_basin, "/q_07.tif"), overwrite = TRUE)
-  writeRaster(runoff(pp_st[[9]], cn_clip), paste0(path_basin, "/q_08.tif"), overwrite = TRUE)
-  writeRaster(runoff(pp_st[[10]], cn_clip), paste0(path_basin, "/q_09.tif"), overwrite = TRUE)
-  writeRaster(runoff(pp_st[[11]], cn_clip), paste0(path_basin, "/q_10.tif"), overwrite = TRUE)
-  writeRaster(runoff(pp_st[[12]], cn_clip), paste0(path_basin, "/q_11.tif"), overwrite = TRUE)
-  writeRaster(runoff(pp_st[[1]], cn_clip), paste0(path_basin, "/q_12.tif"), overwrite = TRUE)
-  
-}
-
 
 # "1","Cuenca Piura"              --> "Sanchez Cerro 2" (21)
 # "2","Cuenca Chira"              --> "QN-2701" (17)
@@ -340,62 +213,99 @@ ggsave("process_cs_min/10/img/comparacion.png", plot = graph_10,width = 250, hei
 
 ## ------------------------------------------------------------------ ##
 
-setwd("E:/2020/uni")
-files_q = list.files("data/raster/ra_cn_cs_max", full.names = T)
-
-for(i in 1:10){
-  i = 5
-  print(as.character(area_cuencas_utm$NOMBRE[i]))
-    path_basin = paste0("process_cs_max_q95/", i)
-    pathcn   = paste0(path_basin, "/ra_cn.tif")
-    pathdem  = paste0(path_basin, "/ra_dem.tif")
-    buf      = st_as_sf(st_buffer(st_geometry(area_cuencas_utm[i,]), dist = 10000))
-    buf_wgs  = st_as_sf(st_transform(buf, crs = proj4string(pisco)))
-    
-    dir.create(path_basin)
-    dir.create(paste0(path_basin, "/shp"))
-    dir.create(paste0(path_basin, "/xls"))
-    dir.create(paste0(path_basin, "/img"))
-    
-    if(!file.exists(pathcn)){
-      cn_clip = mask(crop(cn, buf), buf)
-      writeRaster(cn_clip, pathcn, overwrite=TRUE)
-    }else{
-      cn_clip = raster(pathcn)
+pp_month = function(PP){
+  pp_st = c()
+  for (mes in c(seq(1,11), 0)){
+    l = c()
+    for(i in 1:432){
+      if(i %% 12 == mes){
+        l = c(l, PP[[i]])
+      }
     }
-    
-    if(!file.exists(pathdem)){
-      dem_clip  = Resamplear(mask(crop(dem_total, buf_wgs), buf_wgs), cn_clip)
-      writeRaster(dem_clip, pathdem, overwrite=TRUE)
-    }
-    
-    mes = 0
-    for(f in files_q){
-      print(f)
-      mes = mes + 1
-      path_q_clip = paste0(path_basin, "/", str_pad(mes, 2, pad = "0"), ".tif")
-      q = raster(f)
-      q_clip = mask(crop(raster(f), buf), buf)
-      writeRaster(q_clip, path_q_clip, overwrite=T)
-    }
+    lista = stack(l)
+    pp_st = c(pp_st, lista)
+  }
+  return(pp_st)
 }
 
 
+runoff = function(PP, CN){
+  # CREAR CAUDAL A PARTIR DE NC
+  S = (25400 / CN) - 254
+  IA = 0.2*S
+  Q = (PP - IA)^2 / (PP - IA + S)
+  Q2 = (Q * 10000)/ (30*24*60*60*1000)
+  # CAUDAL MEDIA
+  # Q3 = mean(Q2)
+  # PERSISTENCIA AL 95%
+  Q3 = calc(Q2, fun=function(x) quantile(x, .05, na.rm=TRUE))
+  return(Q3)
+}
 
 
+setwd("E:/2020/uni")
+cn = raster("data/raster/ra_cn_cs_max.tif")
+dem_total = raster("data/raster/SRTM_90.tif")
+pisco = brick("data/raster/pisco_clip.tif")
+area_cuencas = st_read("data/shp/gpo_cuencas_eval.shp")
+area_cuencas_wgs = st_transform(area_cuencas, crs = proj4string(pisco))
+area_cuencas_utm = st_transform(area_cuencas, crs = proj4string(cn))
 
-# ------------------------------------------------------------------------------------
-getwd()
+cn_cs_max = raster("data/raster/ra_cn_cs_max.tif")
+cn_ch_min = raster("data/raster/ra_cn_ch_min.tif")
+cn_cs_min = raster("data/raster/ra_cn_cs_min.tif")
+cn_cn_min = raster("data/raster/ra_cn_cn_min.tif")
 
-proceso = "process_cs_min"
-dir.create(paste0("enviar/", proceso))
-for(c in 1:10){
-  dir.create(paste0("enviar/", proceso, "/", c))
-  nombres = list.files(paste0(proceso, "/", c, "/img"))
-  files = list.files(paste0(proceso, "/", c,"/img"), full.names = T)
-  for (f in seq(length(files))){
-    file.copy(files[f], paste0("enviar/", proceso, "/", c, "/", nombres[f]))
+crear_caudales = function(i, cn){
+  # i = 1
+  # cn = cn_cs_max
+  print(as.character(area_cuencas_utm$NOMBRE[i]))
+  path_basin = paste0("cuencas/", i)
+
+  pathcn   = paste0(path_basin, "/ra_cn", ".tif")
+  pathdem  = paste0(path_basin, "/ra_dem", ".tif")
+
+  if(!file.exists("cuencas")) dir.create("cuencas")
+  dir.create(path_basin)
+  dir.create(paste0(path_basin, "/shp"))
+  dir.create(paste0(path_basin, "/xls"))
+  dir.create(paste0(path_basin, "/img"))
+
+  buf      = st_as_sf(st_buffer(st_geometry(area_cuencas_utm[i,]), dist = 10000))
+  buf_wgs  = st_as_sf(st_transform(buf, crs = proj4string(pisco)))
+  
+  pisco_month_clip = crop(pisco, buf_wgs) %>% mask(buf_wgs) %>% pp_month()
+  cn_clip = crop(cn, buf) %>% mask(buf)
+  cn_clip_resam = Resamplear(cn_clip, pisco_month_clip[[1]])
+  
+  pisco_month = pp_month(pisco)
+  
+  for(x in 1:12){
+    q = runoff(pisco_month_clip[[x]], cn_clip_resam) %>% Resamplear(cn_clip)
+    writeRaster(q, 
+                paste0(path_basin, "/q_", str_pad(as.character(x), 2, pad = "0") ,".tif"), 
+                overwrite = TRUE)
+  }
+
+  # plantilla res=100 | crs=utm18
+  if(!file.exists(pathcn)){
+    writeRaster(cn_clip, pathcn, overwrite=TRUE)
+  }
+  
+  if(!file.exists(pathdem)){
+    dem_clip  = mask(crop(dem_total, buf_wgs), buf_wgs) %>% Resamplear(cn_clip)
+    writeRaster(dem_clip, pathdem, overwrite=TRUE)
   }
 }
 
 
+crear_caudales(1, cn_cs_max)
+crear_caudales(5, cn_cs_max)
+crear_caudales(6, cn_cs_max)
+crear_caudales(7, cn_cs_max)
+crear_caudales(2, cn_ch_min)
+crear_caudales(8, cn_ch_min)
+crear_caudales(9, cn_ch_min)
+crear_caudales(3, cn_cs_min)
+crear_caudales(10, cn_cs_min)
+crear_caudales(4, cn_cn_min)

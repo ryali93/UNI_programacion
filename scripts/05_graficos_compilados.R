@@ -23,7 +23,7 @@ graficos_compilados = function(i, nombre){
   data_process_cs_min = read.csv(files_process_cs_min[1])
   
   df = data.frame(
-    estacion = data$estacion,
+    estacion = data_process_ch_max$estacion,
     ch_max = data_process_ch_max$generado,
     ch_min = data_process_ch_min$generado,
     cn_max = data_process_cn_max$generado,
@@ -59,8 +59,9 @@ graficos_compilados = function(i, nombre){
     scale_x_date(date_labels = '%b', breaks = '1 month') +
     scale_y_continuous(breaks = seq(0, val_max, 20), limits = c(0, val_max)) +
     geom_point(size = 3.5)
+  # return(ploteo)
   
-  ggsave(paste0(SALIDA, "/", nombre,".png"), plot = ploteo, width = 250, height = 180, units = "mm", dpi = 300)
+    ggsave(paste0(SALIDA, "/", nombre,".png"), plot = ploteo, width = 250, height = 180, units = "mm", dpi = 300)
 }
 
 
@@ -78,3 +79,51 @@ graficos_compilados(10, "Cuenca Moche")
 
 
 
+
+
+
+estadisticas_compiladas = function(i, nombre){
+  files_process_ch_max = list.files(paste0("process_ch_max", "/", i, "/img"), pattern = "*.csv$", full.names = T)
+  files_process_ch_min = list.files(paste0("process_ch_min", "/", i, "/img"), pattern = "*.csv$", full.names = T)
+  files_process_cn_max = list.files(paste0("process_cn_max", "/", i, "/img"), pattern = "*.csv$", full.names = T)
+  files_process_cn_min = list.files(paste0("process_cn_min", "/", i, "/img"), pattern = "*.csv$", full.names = T)
+  files_process_cs_max = list.files(paste0("process_cs_max", "/", i, "/img"), pattern = "*.csv$", full.names = T)
+  files_process_cs_min = list.files(paste0("process_cs_min", "/", i, "/img"), pattern = "*.csv$", full.names = T)
+  
+  data_process_ch_max = read.csv(files_process_ch_max[1])
+  data_process_ch_min = read.csv(files_process_ch_min[1])
+  data_process_cn_max = read.csv(files_process_cn_max[1])
+  data_process_cn_min = read.csv(files_process_cn_min[1])
+  data_process_cs_max = read.csv(files_process_cs_max[1])
+  data_process_cs_min = read.csv(files_process_cs_min[1])
+  
+  df = data.frame(
+    estacion = data_process_ch_max$estacion,
+    ch_max = data_process_ch_max$generado,
+    ch_min = data_process_ch_min$generado,
+    cn_max = data_process_cn_max$generado,
+    cn_min = data_process_cn_min$generado,
+    cs_max = data_process_cs_max$generado,
+    cs_min = data_process_cs_min$generado,
+    
+    estad_ch_max = data_process_ch_max$estadist,
+    estad_ch_min = data_process_ch_min$estadist,
+    estad_cn_max = data_process_cn_max$estadist,
+    estad_cn_min = data_process_cn_min$estadist,
+    estad_cs_max = data_process_cs_max$estadist,
+    estad_cs_min = data_process_cs_min$estadist
+    )
+  write.csv(df, paste0(SALIDA, "/", nombre,".csv"))
+}
+
+
+estadisticas_compiladas(1, "Cuenca Piura")
+estadisticas_compiladas(2, "Cuenca Chira")
+estadisticas_compiladas(3, "Cuenca Motupe")
+estadisticas_compiladas(4, "Cuenca Chancay-Lambayeque")
+estadisticas_compiladas(5, "Cuenca Zaña")
+estadisticas_compiladas(6, "Cuenca Jequetepeque")
+estadisticas_compiladas(7, "Cuenca Virú")
+estadisticas_compiladas(8, "Cuenca Santa")
+estadisticas_compiladas(9, "Cuenca Pativilca")
+estadisticas_compiladas(10, "Cuenca Moche")

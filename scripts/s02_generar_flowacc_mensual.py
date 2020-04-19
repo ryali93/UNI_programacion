@@ -11,7 +11,7 @@ def flow_acc_month():
         arcpy.gp.FlowAccumulation_sa(
             flow_dir,
             os.path.join(RASTER_DIR, "facc_{}.tif".format(name)),
-            os.path.join(RASTER_DIR, "{}.tif".format(name)),
+            os.path.join(RASTER_DIR, "q_{}.tif".format(name)),
             'FLOAT')
         print(name)
 
