@@ -17,7 +17,11 @@ maps/
 
 /.idea
 /compartir
+/compartir_2
 /cuencas
+/cuencas2
+/cuencas3
+/cuencas5
 /enviar
 /process
 /process_old
@@ -27,5 +31,6 @@ maps/
 /process_cn_min
 /process_cs_max
 /process_cs_min
+/resultados
 
 >>>>>>> 229ecfb464c643a6179450dc6bb8f058e66c39d1

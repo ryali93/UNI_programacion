@@ -16,6 +16,8 @@ require("dplyr")
 require("stringr")
 require("dplyr")
 require("stringr")
+require("xts")
+require("reshape2")
 
 #------------------------------------------------------------------------
 # CARGANDO FUNCION PARA NORMALIZAR DATOS
@@ -238,18 +240,18 @@ runoff = function(PP, CN){
   # CAUDAL MEDIA
   # Q3 = mean(Q2)
   # PERSISTENCIA AL 95%
-  Q3 = calc(Q2, fun=function(x) quantile(x, .05, na.rm=TRUE))
-  return(Q3)
+  # Q3 = calc(Q2, fun=function(x) quantile(x, .05, na.rm=TRUE))
+  return(Q2)
 }
 
 
 setwd("E:/2020/uni")
-cn = raster("data/raster/ra_cn_cs_max.tif")
+# cn = raster("data/raster/ra_cn_cs_max.tif")
 dem_total = raster("data/raster/SRTM_90.tif")
 pisco = brick("data/raster/pisco_clip.tif")
 area_cuencas = st_read("data/shp/gpo_cuencas_eval.shp")
 area_cuencas_wgs = st_transform(area_cuencas, crs = proj4string(pisco))
-area_cuencas_utm = st_transform(area_cuencas, crs = proj4string(cn))
+area_cuencas_utm = st_transform(area_cuencas, crs = proj4string(cn_cs_max))
 
 cn_cs_max = raster("data/raster/ra_cn_cs_max.tif")
 cn_ch_min = raster("data/raster/ra_cn_ch_min.tif")
@@ -257,20 +259,20 @@ cn_cs_min = raster("data/raster/ra_cn_cs_min.tif")
 cn_cn_min = raster("data/raster/ra_cn_cn_min.tif")
 
 crear_caudales = function(i, cn){
-  # i = 1
-  # cn = cn_cs_max
+  i = 1
+  cn = cn_cs_max
   print(as.character(area_cuencas_utm$NOMBRE[i]))
-  path_basin = paste0("cuencas/", i)
-
+  path_basin = paste0("cuencas4/", i)
+  
   pathcn   = paste0(path_basin, "/ra_cn", ".tif")
   pathdem  = paste0(path_basin, "/ra_dem", ".tif")
-
-  if(!file.exists("cuencas")) dir.create("cuencas")
+  
+  if(!file.exists("cuencas4")) dir.create("cuencas4")
   dir.create(path_basin)
   dir.create(paste0(path_basin, "/shp"))
   dir.create(paste0(path_basin, "/xls"))
   dir.create(paste0(path_basin, "/img"))
-
+  
   buf      = st_as_sf(st_buffer(st_geometry(area_cuencas_utm[i,]), dist = 10000))
   buf_wgs  = st_as_sf(st_transform(buf, crs = proj4string(pisco)))
   
@@ -278,15 +280,13 @@ crear_caudales = function(i, cn){
   cn_clip = crop(cn, buf) %>% mask(buf)
   cn_clip_resam = Resamplear(cn_clip, pisco_month_clip[[1]])
   
-  pisco_month = pp_month(pisco)
-  
   for(x in 1:12){
     q = runoff(pisco_month_clip[[x]], cn_clip_resam) %>% Resamplear(cn_clip)
     writeRaster(q, 
                 paste0(path_basin, "/q_", str_pad(as.character(x), 2, pad = "0") ,".tif"), 
                 overwrite = TRUE)
   }
-
+  
   # plantilla res=100 | crs=utm18
   if(!file.exists(pathcn)){
     writeRaster(cn_clip, pathcn, overwrite=TRUE)
@@ -309,3 +309,229 @@ crear_caudales(9, cn_ch_min)
 crear_caudales(3, cn_cs_min)
 crear_caudales(10, cn_cs_min)
 crear_caudales(4, cn_cn_min)
+
+
+
+# --------------------------------------------------------------------------------
+
+setwd("E:/2020/uni")
+cs_max_st = stack(list.files("data/raster/q05/cs_max", full.names = T))
+
+cortar_caudales = function(i, cn){
+  i = 6
+  print(as.character(area_cuencas_utm$NOMBRE[i]))
+  path_basin = paste0("cuencas3/", i)
+  
+  if(!file.exists("cuencas3")) dir.create("cuencas3")
+  dir.create(path_basin)
+  dir.create(paste0(path_basin, "/shp"))
+  dir.create(paste0(path_basin, "/xls"))
+  dir.create(paste0(path_basin, "/img"))
+  
+  buf      = st_as_sf(st_buffer(st_geometry(area_cuencas_utm[i,]), dist = 10000))
+  
+  q_month_clip = crop(cs_max_st, buf) %>% mask(buf)
+  
+  for(x in 1:12){
+    writeRaster(q_month_clip[[x]], 
+                paste0(path_basin, "/q_", str_pad(as.character(x), 2, pad = "0") ,".tif"), 
+                overwrite = TRUE)
+  }
+}
+
+
+crear_caudales(1, cn_cs_max)
+crear_caudales(5, cn_cs_max)
+crear_caudales(6, cn_cs_max)
+crear_caudales(7, cn_cs_max)
+crear_caudales(2, cn_ch_min)
+crear_caudales(8, cn_ch_min)
+crear_caudales(9, cn_ch_min)
+crear_caudales(3, cn_cs_min)
+crear_caudales(10, cn_cs_min)
+crear_caudales(4, cn_cn_min)
+
+
+
+# --------------------------------------------------------------------------------
+# CAUDALES SERIE COMPLETA
+
+
+runoff = function(PP, CN, ndias){
+  # CREAR CAUDAL A PARTIR DE NC
+  S = (25400 / CN) - 254
+  IA = 0.2*S
+  Q = (PP - IA)^2 / (PP - IA + S)
+  Q2 = (Q * 10000)/ (ndias*24*60*60*1000)
+  # CAUDAL MEDIA
+  # Q3 = mean(Q2)
+  # PERSISTENCIA AL 95%
+  # Q3 = calc(Q2, fun=function(x) quantile(x, .05, na.rm=TRUE))
+  return(Q2)
+}
+
+
+crear_caudales = function(i, cn1, cn2){
+  i = 1
+  cn1 = cn_cs_min
+  cn2 = cn_cn_max
+  print(as.character(area_cuencas_utm$NOMBRE[i]))
+  path_basin = paste0("cuencas4/", i)
+  
+  pathcn   = paste0(path_basin, "/ra_cn", ".tif")
+  pathdem  = paste0(path_basin, "/ra_dem", ".tif")
+  
+  if(!file.exists("cuencas4")) dir.create("cuencas4")
+  dir.create(path_basin)
+  dir.create(paste0(path_basin, "/shp"))
+  dir.create(paste0(path_basin, "/xls"))
+  dir.create(paste0(path_basin, "/img"))
+  
+  buf      = st_as_sf(st_buffer(st_geometry(area_cuencas_utm[i,]), dist = 10000))
+  buf_wgs  = st_as_sf(st_transform(buf, crs = proj4string(pisco)))
+  
+  pisco_month_clip = crop(pisco, buf_wgs) %>% mask(buf_wgs)
+  cn_clip_1 = crop(cn1, buf) %>% mask(buf)
+  cn_clip_resam_1 = Resamplear(cn_clip, pisco_month_clip[[1]])
+  
+  cn_clip_2 = crop(cn2, buf) %>% mask(buf)
+  cn_clip_resam_2 = Resamplear(cn_clip, pisco_month_clip[[1]])
+  
+  
+  for(x in 1:432){
+    print(x)
+    if(i %% 12 %in% c(0, 1:4)){
+      cn = cn_clip_resam_1
+    }else if(i %% 12 %in% mes){
+      cn = cn_clip_resam_2
+    }
+    q = runoff(pisco_month_clip[[x]], cn_clip_resam, numberOfDays(dates[x])) %>% Resamplear(cn_clip)
+    writeRaster(q, 
+                paste0(path_basin, "/q_", str_pad(as.character(x), 3, pad = "0") ,".tif"), 
+                overwrite = TRUE)
+  }
+  
+  # plantilla res=100 | crs=utm18
+  if(!file.exists(pathcn)){
+    writeRaster(cn_clip, pathcn, overwrite=TRUE)
+  }
+  
+  if(!file.exists(pathdem)){
+    dem_clip  = mask(crop(dem_total, buf_wgs), buf_wgs) %>% Resamplear(cn_clip)
+    writeRaster(dem_clip, pathdem, overwrite=TRUE)
+  }
+}
+
+
+crear_caudales(1, cn_cs_max)
+crear_caudales(5, cn_cs_max)
+crear_caudales(6, cn_cs_max)
+crear_caudales(7, cn_cs_max)
+crear_caudales(2, cn_ch_min)
+crear_caudales(8, cn_ch_min)
+crear_caudales(9, cn_ch_min)
+crear_caudales(3, cn_cs_min)
+crear_caudales(10, cn_cs_min)
+crear_caudales(4, cn_cn_min)
+
+
+
+dates = seq(as.Date("1981-01-01"), as.Date("2016-12-31"), by="month")
+numberOfDays <- function(date) {
+  m <- format(date, format="%m")
+  while (format(date, format="%m") == m) { date <- date + 1  }
+  return(as.integer(format(date - 1, format="%d")))
+}
+
+
+
+
+q_month = function(Q){
+  q_st = c()
+  for (mes in c(seq(1,11), 0)){
+    l = c()
+    for(i in 1:432){
+      if(i %% 12 == mes){
+        l = c(l, Q[[i]])
+      }
+    }
+    lista = calc(stack(l), fun=function(x) quantile(x, .05, na.rm=TRUE))
+    q_st = c(q_st, lista)
+  }
+  return(q_st)
+}
+
+
+path_basin = "E:/2020/uni/cuencas4/1"
+# Q3 = calc(Q2, fun=function(x) quantile(x, .05, na.rm=TRUE))
+Q = stack(list.files("E:/2020/uni/cuencas4/1", pattern = "^facc_(.*)tif$", full.names = T))
+
+q_st = c()
+for (mes in c(seq(1,11), 0)){
+  l = c()
+  for(i in 1:432){
+    if(i %% 12 == mes){
+      l = c(l, Q[[i]])
+    }
+  }
+  lista = stack(l)
+  # lista = calc(stack(l), fun=function(x) quantile(x, .05, na.rm=TRUE))
+  # writeRaster(lista, 
+  #             paste0(path_basin, "/q_", str_pad(as.character(mes), 2, pad = "0") ,".tif"), 
+  #             overwrite = TRUE)
+  q_st = c(q_st, lista)
+  print(mes)
+}
+
+plot(q_st[[3]])
+
+annos = seq(as.Date("1981-01-01"),as.Date("2016-01-01"),by="year")
+coord = data.frame(x=-122729,y=9424388)
+xy = SpatialPoints(coordinates(coord))
+
+serie_01 = t(extract(q_st[[1]], xy))
+serie_02 = t(extract(q_st[[2]], xy))
+serie_03 = t(extract(q_st[[3]], xy))
+serie_04 = t(extract(q_st[[4]], xy))
+serie_05 = t(extract(q_st[[5]], xy))
+serie_06 = t(extract(q_st[[6]], xy))
+serie_07 = t(extract(q_st[[7]], xy))
+serie_08 = t(extract(q_st[[8]], xy))
+serie_09 = t(extract(q_st[[9]], xy))
+serie_10 = t(extract(q_st[[10]], xy))
+serie_11 = t(extract(q_st[[11]], xy))
+serie_12 = t(extract(q_st[[12]], xy))
+
+df = data.frame(serie_01,serie_02,serie_03,serie_04,serie_05,serie_06,serie_07,serie_08,serie_09,serie_10,serie_11,serie_12)
+row.names(df) = annos
+names(df) = 1:12
+
+
+ts.plot(ts(df))
+
+df_xts = as.xts(df)
+plot(df_xts$serie_01)
+plot(df_xts$serie_02, add=T)
+
+
+par(mfcol=c(1,2))
+plot(df_xts$serie_03)
+plot(df_xts$serie_08)
+
+mean(df_xts$serie_03)
+quantile(df_xts$serie_03, .05, na.rm=TRUE)
+
+mean(df_xts$serie_08)
+quantile(df_xts$serie_08, .05, na.rm=TRUE)
+
+
+df2 = melt(df)
+df2["fecha"] = annos
+
+df3 = df2 %>%
+  mutate(x = paste0(format(fecha, "%Y"), "-", str_pad(variable, 2, pad = "0"), "-01")) %>%
+  select(c("x", "value")) %>%
+  arrange(x)
+
+write.csv(df, "E:/2020/uni/cuencas4/1/xls/datos_multianuales_SanchezCerro.csv")
+write.csv(df3, "E:/2020/uni/cuencas4/1/xls/serie_SanchezCerro_2.csv")

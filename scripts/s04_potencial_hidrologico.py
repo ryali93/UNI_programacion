@@ -4,7 +4,7 @@ from s00_funciones import *
 # Existing files
 DEM = os.path.join(RASTER_DIR, "ra_dem.tif")
 SLOPE = os.path.join(RASTER_DIR, "slope_deg_17s.tif")
-FLOW_ACC_MIN = os.path.join(RASTER_DIR, "facc_08.tif")  # Acumulacion de flujo para mes 8 (agosto)
+FLOW_ACC_MIN = os.path.join(RASTER_DIR, "facc_03.tif")  # Acumulacion de flujo para mes 8 (agosto)
 
 # New files
 RED_HIDRICA = os.path.join(SHP_DIR, "gpl_red_hidrica.shp") # output
@@ -27,7 +27,7 @@ SPLIT_RED_HIDRICA = os.path.join(SHP_DIR, "gpl_red_hidrica_split.shp") # output
 # ISOCAUDAL = os.path.join(SHP_DIR, "gpl_isocaudal.shp")
 # TABLA_SECOND = os.path.join(XLS_DIR, "tb_second.xls")
 
-def create_river(flowacc, output, treshold=1):
+def create_river(flowacc, output, treshold=0.5):
     '''
     flowacc: Acumulacion de flujo de un mes de estiaje
     treshold: Umbral
@@ -59,7 +59,14 @@ def split_river(river, points, output):
         river, 
         points, 
         output,
-        '5000 Meters')
+        '10 Meters')
+
+    with arcpy.da.UpdateCursor(output, ["SHAPE@"], spatial_reference=arcpy.SpatialReference(32718)) as cursor:
+        for x in cursor:
+            longitud = x[0].getLength('PLANAR', 'METERS')
+            if longitud < 1000:
+                cursor.deleteRow()
+
 
 def create_eval_areas(river_split, output, buff):
     '''
@@ -147,6 +154,9 @@ def first_version_table(layer, tabla):
     df["POT_12"] = df["Q_12"] * df["Z_DELTA"] * 0.8 * 9810 / 1000000
 
     df["POT_AN"] = df["POT_01"]+df["POT_02"]+df["POT_03"]+df["POT_04"]+df["POT_05"]+df["POT_06"]+df["POT_07"]+df["POT_08"]+df["POT_09"]+df["POT_10"]+df["POT_11"]+df["POT_12"]
+    df["POT_MEDIO"] = df["POT_AN"].apply(lambda x: x/12)
+    df["POT_MAX"] = pd.DataFrame([df["POT_01"],df["POT_02"],df["POT_03"],df["POT_04"],df["POT_05"],df["POT_06"],df["POT_07"],df["POT_08"],df["POT_09"],df["POT_10"],df["POT_11"],df["POT_12"]]).max()
+    df["POT_MIN"] = pd.DataFrame([df["POT_01"],df["POT_02"],df["POT_03"],df["POT_04"],df["POT_05"],df["POT_06"],df["POT_07"],df["POT_08"],df["POT_09"],df["POT_10"],df["POT_11"],df["POT_12"]]).min()
 
     df = df[df['Z_DELTA'].notnull()]
 
